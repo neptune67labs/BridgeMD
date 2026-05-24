@@ -396,3 +396,7 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# BridgeMD local analysis sandboxes
+external-solutions/
+sandbox-solutions/
