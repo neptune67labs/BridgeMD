@@ -15,6 +15,12 @@ The command writes these files to `/docs` at the root of the analyzed solution:
 - `solution-overview.md`
 - `project-index.md`
 - `type-index.md`
+- `AI_CONTEXT.md`
+- `ARCHITECTURE.md`
+- `DEPENDENCY_GRAPH.md`
+- `CONVENTIONS.md`
+- `DOMAINS.md`
+- `DANGEROUS_ZONES.md`
 
 ## Local Testing With External Repositories
 

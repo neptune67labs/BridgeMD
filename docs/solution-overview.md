@@ -4,17 +4,19 @@
 | --- | --- |
 | Solution | `BridgeMD` |
 | Projects | 4 |
-| Types | 9 |
+| Types | 14 |
 | Root | `/Users/francisco/Projects/BridgeMD` |
+| Architecture | `Layered Architecture` |
+| Technologies | `MSBuildWorkspace`, `Roslyn` |
 
 ## Projects
 
-| Project | Frameworks | Types | Patterns |
-| --- | --- | ---: | --- |
-| `BridgeMD.Cli` | `net8.0` | 0 | none |
-| `BridgeMD.Core` | `net8.0` | 7 | none |
-| `BridgeMD.Markdown` | `net8.0` | 1 | none |
-| `BridgeMD.Roslyn` | `net8.0` | 1 | none |
+| Project | Layer | Frameworks | Types | Patterns |
+| --- | --- | --- | ---: | --- |
+| `BridgeMD.Cli` | UI | `net8.0` | 0 | none |
+| `BridgeMD.Core` | Shared | `net8.0` | 12 | none |
+| `BridgeMD.Markdown` | Application | `net8.0` | 1 | `Writer` |
+| `BridgeMD.Roslyn` | Infrastructure | `net8.0` | 1 | `Analyzer` |
 
 ## Project Relations
 

@@ -1,17 +1,66 @@
 # Type Index
 
-## BridgeMD.Core.CodeTypeKind
+## BridgeMD.Markdown.MarkdownDocumentationWriter
 
 | Field | Value |
 | --- | --- |
-| Kind | Enum |
+| Kind | Class |
+| Layer | Application |
+| Relevance | Medium / 58 |
+| Namespace | `BridgeMD.Markdown` |
+| Project | `BridgeMD.Markdown` |
+| Base type | none |
+| Interfaces | none |
+| Patterns | `Writer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- `Task WriteAsync(SolutionModel solution, CancellationToken cancellationToken)`
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Roslyn.SolutionAnalyzer
+
+| Field | Value |
+| --- | --- |
+| Kind | Class |
+| Layer | Infrastructure |
+| Relevance | Medium / 46 |
+| Namespace | `BridgeMD.Roslyn` |
+| Project | `BridgeMD.Roslyn` |
+| Base type | none |
+| Interfaces | none |
+| Patterns | `Analyzer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- `Task<SolutionModel> AnalyzeAsync(string solutionPath, CancellationToken cancellationToken)`
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.IoCRegistrationModel
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
-| Interfaces | none |
+| Interfaces | `System.IEquatable<BridgeMD.Core.IoCRegistrationModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
+- none
+
+Semantic dependencies:
 - none
 
 ## BridgeMD.Core.MethodModel
@@ -19,13 +68,20 @@ Public methods:
 | Field | Value |
 | --- | --- |
 | Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.MethodModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
+- none
+
+Semantic dependencies:
 - none
 
 ## BridgeMD.Core.ParameterModel
@@ -33,13 +89,20 @@ Public methods:
 | Field | Value |
 | --- | --- |
 | Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.ParameterModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
+- none
+
+Semantic dependencies:
 - none
 
 ## BridgeMD.Core.ProjectModel
@@ -47,13 +110,20 @@ Public methods:
 | Field | Value |
 | --- | --- |
 | Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.ProjectModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
+- none
+
+Semantic dependencies:
 - none
 
 ## BridgeMD.Core.ProjectReferenceModel
@@ -61,13 +131,20 @@ Public methods:
 | Field | Value |
 | --- | --- |
 | Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.ProjectReferenceModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
+- none
+
+Semantic dependencies:
 - none
 
 ## BridgeMD.Core.SolutionModel
@@ -75,13 +152,41 @@ Public methods:
 | Field | Value |
 | --- | --- |
 | Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.SolutionModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.TypeDependencyModel
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Core.TypeDependencyModel>` |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
 - none
 
 ## BridgeMD.Core.TypeModel
@@ -89,40 +194,103 @@ Public methods:
 | Field | Value |
 | --- | --- |
 | Kind | Record |
+| Layer | Shared |
+| Relevance | Low / 18 |
 | Namespace | `BridgeMD.Core` |
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.TypeModel>` |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
 - none
 
-## BridgeMD.Markdown.MarkdownDocumentationWriter
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.ArchitectureLayer
 
 | Field | Value |
 | --- | --- |
-| Kind | Class |
-| Namespace | `BridgeMD.Markdown` |
-| Project | `BridgeMD.Markdown` |
+| Kind | Enum |
+| Layer | Shared |
+| Relevance | Low / 3 |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | none |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
-- `Task WriteAsync(SolutionModel solution, CancellationToken cancellationToken)`
+- none
 
-## BridgeMD.Roslyn.SolutionAnalyzer
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.CodeTypeKind
 
 | Field | Value |
 | --- | --- |
-| Kind | Class |
-| Namespace | `BridgeMD.Roslyn` |
-| Project | `BridgeMD.Roslyn` |
+| Kind | Enum |
+| Layer | Shared |
+| Relevance | Low / 3 |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | none |
 | Patterns | none |
+| Technologies | none |
+| Summary | none |
 
 Public methods:
-- `Task<SolutionModel> AnalyzeAsync(string solutionPath, CancellationToken cancellationToken)`
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.DependencyKind
+
+| Field | Value |
+| --- | --- |
+| Kind | Enum |
+| Layer | Shared |
+| Relevance | Low / 3 |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | none |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.RelevanceCategory
+
+| Field | Value |
+| --- | --- |
+| Kind | Enum |
+| Layer | Shared |
+| Relevance | Low / 3 |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | none |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
 

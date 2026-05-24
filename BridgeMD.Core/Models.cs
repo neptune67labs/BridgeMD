@@ -20,9 +20,12 @@ public sealed record SolutionModel(
 public sealed record ProjectModel(
     string Name,
     string FilePath,
+    ArchitectureLayer Layer,
     IReadOnlyList<string> TargetFrameworks,
     IReadOnlyList<ProjectReferenceModel> ProjectReferences,
     IReadOnlyList<string> DeclaredDependencies,
+    IReadOnlyList<string> Technologies,
+    IReadOnlyList<IoCRegistrationModel> IoCRegistrations,
     IReadOnlyList<TypeModel> Types)
 {
     public IReadOnlyList<string> Patterns => Types
@@ -40,10 +43,20 @@ public sealed record TypeModel(
     CodeTypeKind Kind,
     string Namespace,
     string ProjectName,
+    string? FilePath,
+    ArchitectureLayer Layer,
     string? BaseType,
     IReadOnlyList<string> Interfaces,
     IReadOnlyList<MethodModel> PublicMethods,
-    IReadOnlyList<string> Patterns);
+    IReadOnlyList<string> Patterns,
+    IReadOnlyList<string> Technologies,
+    IReadOnlyList<TypeDependencyModel> Dependencies,
+    RelevanceCategory RelevanceCategory,
+    int RelevanceScore,
+    bool IsGenerated,
+    bool IsMigration,
+    bool IsDangerousZone,
+    string? Summary);
 
 public sealed record MethodModel(
     string Name,
@@ -53,6 +66,18 @@ public sealed record MethodModel(
 
 public sealed record ParameterModel(string Name, string Type);
 
+public sealed record TypeDependencyModel(
+    string SourceType,
+    string TargetType,
+    DependencyKind Kind,
+    string? MemberName);
+
+public sealed record IoCRegistrationModel(
+    string InterfaceType,
+    string ImplementationType,
+    string RegistrationKind,
+    string Location);
+
 public enum CodeTypeKind
 {
     Class,
@@ -60,4 +85,35 @@ public enum CodeTypeKind
     Record,
     Enum,
     Struct
+}
+
+public enum ArchitectureLayer
+{
+    Unknown,
+    Domain,
+    Application,
+    Infrastructure,
+    UI,
+    API,
+    Shared,
+    Tests
+}
+
+public enum RelevanceCategory
+{
+    Low,
+    Medium,
+    High
+}
+
+public enum DependencyKind
+{
+    ConstructorInjection,
+    Field,
+    Property,
+    MethodParameter,
+    ReturnType,
+    DbSet,
+    MediatR,
+    Instantiation
 }
