@@ -13,6 +13,7 @@ public sealed class SolutionAnalyzer
 {
     private static readonly SymbolDisplayFormat FullNameFormat = SymbolDisplayFormat.FullyQualifiedFormat;
     private static readonly SymbolDisplayFormat ShortNameFormat = SymbolDisplayFormat.MinimallyQualifiedFormat;
+    private static readonly SemanticDependencyFilter DependencyFilter = new();
 
     public async Task<SolutionModel> AnalyzeAsync(string solutionPath, CancellationToken cancellationToken = default)
     {
@@ -171,7 +172,8 @@ public sealed class SolutionAnalyzer
         var dependencies = FindTypeDependencies(fullName, declaration, semanticModel);
         var technologies = DetectTypeTechnologies(symbol, baseType, interfaces, dependencies, declaration);
         var isDangerousZone = DetectDangerousZone(fullName, filePath, patterns, technologies);
-        var relevance = ScoreType(symbol, methods, patterns, technologies, dependencies, isGenerated, isMigration, isDangerousZone);
+        var role = DetectArchitecturalRole(symbol, declaration, baseType, interfaces, patterns, technologies);
+        var relevance = ScoreType(symbol, methods, patterns, technologies, dependencies, role, isGenerated, isMigration, isDangerousZone);
 
         return new TypeModel(
             symbol.Name,
@@ -181,6 +183,7 @@ public sealed class SolutionAnalyzer
             projectName,
             filePath,
             layer,
+            role,
             baseType,
             interfaces,
             methods,
@@ -266,11 +269,7 @@ public sealed class SolutionAnalyzer
             AddDependency(dependencies, sourceType, semanticModel.GetTypeInfo(creation.Type).Type, DependencyKind.Instantiation, null);
         }
 
-        return dependencies
-            .Where(dependency => !IsFrameworkType(dependency.TargetType))
-            .DistinctBy(dependency => $"{dependency.TargetType}:{dependency.Kind}:{dependency.MemberName}")
-            .OrderBy(dependency => dependency.TargetType, StringComparer.Ordinal)
-            .ToArray();
+        return DependencyFilter.Filter(dependencies);
     }
 
     private static void AddDependency(
@@ -307,7 +306,7 @@ public sealed class SolutionAnalyzer
         foreach (var invocation in syntaxRoot.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
             var memberName = (invocation.Expression as MemberAccessExpressionSyntax)?.Name.Identifier.Text;
-            if (memberName is not ("RegisterType" or "RegisterInstance" or "Resolve"))
+            if (memberName is not ("RegisterType" or "RegisterInstance" or "Resolve" or "AddScoped" or "AddTransient" or "AddSingleton"))
             {
                 continue;
             }
@@ -320,10 +319,20 @@ public sealed class SolutionAnalyzer
 
             var interfaceType = typeArguments.Count > 0
                 ? ResolveTypeName(typeArguments[0], semanticModel)
-                : "unknown";
+                : ResolveTypeFromArgument(invocation.ArgumentList.Arguments.ElementAtOrDefault(0), semanticModel);
             var implementationType = typeArguments.Count > 1
                 ? ResolveTypeName(typeArguments[1], semanticModel)
-                : interfaceType;
+                : ResolveTypeFromArgument(invocation.ArgumentList.Arguments.ElementAtOrDefault(typeArguments.Count == 1 ? 0 : 1), semanticModel);
+
+            if (implementationType == "unknown")
+            {
+                implementationType = interfaceType;
+            }
+
+            if (interfaceType == "unknown" || IsIoCRegistrationNoise(interfaceType, implementationType))
+            {
+                continue;
+            }
 
             registrations.Add(new IoCRegistrationModel(
                 interfaceType,
@@ -340,13 +349,32 @@ public sealed class SolutionAnalyzer
         return CleanName((semanticModel.GetTypeInfo(syntax).Type?.ToDisplayString(FullNameFormat) ?? syntax.ToString()));
     }
 
+    private static string ResolveTypeFromArgument(ArgumentSyntax? argument, SemanticModel semanticModel)
+    {
+        if (argument?.Expression is TypeOfExpressionSyntax typeOfExpression)
+        {
+            return ResolveTypeName(typeOfExpression.Type, semanticModel);
+        }
+
+        if (argument?.Expression is ObjectCreationExpressionSyntax objectCreation)
+        {
+            return ResolveTypeName(objectCreation.Type, semanticModel);
+        }
+
+        return "unknown";
+    }
+
     private static ArchitectureLayer InferLayer(string projectName, string semanticName)
     {
         var value = $"{projectName}.{semanticName}";
 
-        if (ContainsAny(value, ".Tests", "Test.", "Tests.", ".Spec", "Specifications.Tests")) return ArchitectureLayer.Tests;
+        if (ContainsAny(value, ".Tests", "Test.", "Tests.", "Specifications.Tests")) return ArchitectureLayer.Tests;
         if (ContainsAny(value, ".Domain", "Domain.", ".Core.Domain", ".Entities", ".Aggregates")) return ArchitectureLayer.Domain;
-        if (ContainsAny(value, ".Application", "Application.", ".UseCases", ".Features", ".Commands", ".Queries")) return ArchitectureLayer.Application;
+        if (projectName.Equals("ApplicationCore", StringComparison.OrdinalIgnoreCase)
+            || ContainsAny(value, ".Application.", "Application.", ".UseCases", ".Features", ".Commands", ".Queries", ".Specifications"))
+        {
+            return ArchitectureLayer.Application;
+        }
         if (ContainsAny(value, ".Infrastructure", "Infrastructure.", ".Persistence", ".Data", ".EntityFramework", ".Repositories", ".Roslyn")) return ArchitectureLayer.Infrastructure;
         if (ContainsAny(value, ".Api", ".API", "Api.", "Controllers", ".Endpoints")) return ArchitectureLayer.API;
         if (ContainsAny(value, ".Web", "Web.", ".Mvc", ".Razor", ".Blazor", ".Pages", ".Views", ".Cli")) return ArchitectureLayer.UI;
@@ -458,12 +486,78 @@ public sealed class SolutionAnalyzer
             .ToArray();
     }
 
+    private static ArchitecturalRole DetectArchitecturalRole(
+        INamedTypeSymbol symbol,
+        BaseTypeDeclarationSyntax declaration,
+        string? baseType,
+        IReadOnlyList<string> interfaces,
+        IReadOnlyList<string> patterns,
+        IReadOnlyList<string> technologies)
+    {
+        var name = symbol.Name;
+        var namespaceName = symbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        var signals = new[] { name, namespaceName, baseType ?? string.Empty }
+            .Concat(interfaces)
+            .Concat(patterns)
+            .Concat(technologies)
+            .ToArray();
+
+        if (signals.Any(signal => signal.EndsWith("Dto", StringComparison.OrdinalIgnoreCase))
+            || name.EndsWith("Request", StringComparison.Ordinal)
+            || name.EndsWith("Response", StringComparison.Ordinal))
+        {
+            return ArchitecturalRole.DTO;
+        }
+
+        if (signals.Any(signal => signal.Contains("IRequestHandler", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.CQRSHandler;
+        if (signals.Any(signal => signal.Contains("DbContext", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.DbContext;
+        if (signals.Any(signal => signal.Contains("ControllerBase", StringComparison.OrdinalIgnoreCase) || signal.EndsWith("Controller", StringComparison.Ordinal))) return ArchitecturalRole.Controller;
+        if (name.EndsWith("Endpoint", StringComparison.Ordinal)
+            || interfaces.Any(signal => signal.Contains("Endpoint", StringComparison.OrdinalIgnoreCase))
+            || (baseType?.Contains("Endpoint", StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            return ArchitecturalRole.Endpoint;
+        }
+        if (signals.Any(signal => signal.Contains("IEntityTypeConfiguration", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Configuration;
+        if (signals.Any(signal => signal.Contains("Specification", StringComparison.OrdinalIgnoreCase) || signal.Contains("Spec<", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Specification;
+        if (signals.Any(signal => signal.Contains("Repository", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Repository;
+        if (signals.Any(signal => signal.Contains("Middleware", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Middleware;
+        if (signals.Any(signal => signal.Contains("Profile", StringComparison.OrdinalIgnoreCase) || signal.Contains("IMapper", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Mapper;
+        if (signals.Any(signal => signal.Contains("IHostedService", StringComparison.OrdinalIgnoreCase) || signal.EndsWith("HostedService", StringComparison.Ordinal))) return ArchitecturalRole.HostedService;
+        if (signals.Any(signal => signal.EndsWith("Decorator", StringComparison.Ordinal))) return ArchitecturalRole.Decorator;
+        if (signals.Any(signal => signal.EndsWith("Factory", StringComparison.Ordinal))) return ArchitecturalRole.Factory;
+        if (signals.Any(signal => signal.EndsWith("Adapter", StringComparison.Ordinal))) return ArchitecturalRole.Adapter;
+        if (signals.Any(signal => signal.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.ViewModel;
+        if (signals.Any(signal => signal.Contains("Analyzer", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Analyzer;
+        if (signals.Any(signal => signal.Contains("Writer", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.Writer;
+        if (signals.Any(signal => signal.Contains("IRequest", StringComparison.OrdinalIgnoreCase)) && name.EndsWith("Command", StringComparison.Ordinal)) return ArchitecturalRole.Command;
+        if (signals.Any(signal => signal.Contains("IRequest", StringComparison.OrdinalIgnoreCase)) || name.EndsWith("Query", StringComparison.Ordinal)) return ArchitecturalRole.Query;
+        if (signals.Any(signal => signal.EndsWith("Service", StringComparison.OrdinalIgnoreCase)) && namespaceName.Contains("Domain", StringComparison.OrdinalIgnoreCase)) return ArchitecturalRole.DomainService;
+        if (signals.Any(signal => signal.EndsWith("Service", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.ApplicationService;
+        if (interfaces.Any(interfacename => interfacename.Contains("IAggregateRoot", StringComparison.OrdinalIgnoreCase))) return ArchitecturalRole.AggregateRoot;
+        if (namespaceName.Contains("ValueObject", StringComparison.OrdinalIgnoreCase) || name.EndsWith("Value", StringComparison.Ordinal)) return ArchitecturalRole.ValueObject;
+        if (namespaceName.Contains("Entities", StringComparison.OrdinalIgnoreCase) && symbol.TypeKind is TypeKind.Class or TypeKind.Struct) return ArchitecturalRole.Entity;
+
+        var hasHttpAttribute = declaration.AttributeLists
+            .SelectMany(list => list.Attributes)
+            .Select(attribute => attribute.Name.ToString())
+            .Any(attributeName => attributeName.StartsWith("Http", StringComparison.OrdinalIgnoreCase)
+                || attributeName.Contains("Route", StringComparison.OrdinalIgnoreCase));
+        if (hasHttpAttribute)
+        {
+            return ArchitecturalRole.Endpoint;
+        }
+
+        return ArchitecturalRole.Unknown;
+    }
+
     private static (int Score, RelevanceCategory Category) ScoreType(
         INamedTypeSymbol symbol,
         IReadOnlyList<MethodModel> methods,
         IReadOnlyList<string> patterns,
         IReadOnlyList<string> technologies,
         IReadOnlyList<TypeDependencyModel> dependencies,
+        ArchitecturalRole role,
         bool isGenerated,
         bool isMigration,
         bool isDangerousZone)
@@ -475,6 +569,15 @@ public sealed class SolutionAnalyzer
         if (patterns.Any(pattern => pattern is "Service" or "Controller" or "UseCase" or "DbContext" or "Repository" or "UnitOfWork" or "CQRS Handler")) score += 45;
         if (patterns.Any(pattern => pattern is "Command" or "Query" or "Specification")) score += 25;
         if (patterns.Any(pattern => pattern is "Analyzer" or "Writer")) score += 20;
+        score += role switch
+        {
+            ArchitecturalRole.DbContext or ArchitecturalRole.CQRSHandler or ArchitecturalRole.Controller or ArchitecturalRole.Endpoint => 35,
+            ArchitecturalRole.Repository or ArchitecturalRole.ApplicationService or ArchitecturalRole.DomainService or ArchitecturalRole.Middleware => 25,
+            ArchitecturalRole.Specification or ArchitecturalRole.AggregateRoot or ArchitecturalRole.Configuration or ArchitecturalRole.Decorator => 18,
+            ArchitecturalRole.Entity or ArchitecturalRole.Command or ArchitecturalRole.Query or ArchitecturalRole.Mapper => 12,
+            ArchitecturalRole.DTO or ArchitecturalRole.ViewModel => -12,
+            _ => 0
+        };
         if (technologies.Any(technology => technology.Contains("Entity Framework", StringComparison.Ordinal) || technology is "MediatR" or "CQRS" or "Unity IoC")) score += 25;
         if (isDangerousZone) score += 15;
         if (patterns.Any(pattern => pattern is "Dto" or "ViewModel")) score -= 10;
@@ -621,6 +724,18 @@ public sealed class SolutionAnalyzer
             || typeName.StartsWith("(", StringComparison.Ordinal)
             || typeName.EndsWith("[]", StringComparison.Ordinal)
             || typeName is "string" or "int" or "bool" or "void" or "object";
+    }
+
+    private static bool IsIoCRegistrationNoise(string interfaceType, string implementationType)
+    {
+        var value = $"{interfaceType} {implementationType}";
+        return ContainsAny(value,
+            "System.Net.Http.HttpClient",
+            "AuthenticationStateProvider",
+            "Microsoft.Extensions.",
+            "Microsoft.AspNetCore.Components.",
+            "Microsoft.AspNetCore.Http.",
+            "Microsoft.AspNetCore.Hosting.");
     }
 
     private static string CleanName(string value)

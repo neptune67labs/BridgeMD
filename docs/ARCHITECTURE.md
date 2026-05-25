@@ -2,11 +2,11 @@
 
 ## Layers
 
-| Layer | Projects | Key Types | Responsibility |
-| --- | --- | --- | --- |
-| Application | `BridgeMD.Markdown` | `MarkdownDocumentationWriter` | Use cases, orchestration, commands, queries, services. |
-| Infrastructure | `BridgeMD.Roslyn` | `SolutionAnalyzer` | Persistence, external integrations, IoC, EF, repositories. |
-| Shared | `BridgeMD.Core` | `IoCRegistrationModel`, `MethodModel`, `ParameterModel`, `ProjectModel`, `ProjectReferenceModel`, `SolutionModel`, `TypeDependencyModel`, `TypeModel` | Cross-cutting contracts and reusable primitives. |
+| Layer | Projects | Key Types | Key Roles | Responsibility |
+| --- | --- | --- | --- | --- |
+| Application | `BridgeMD.Markdown` | `MarkdownDocumentationWriter` | `Writer` | Use cases, orchestration, commands, queries, services. |
+| Infrastructure | `BridgeMD.Roslyn` | `SolutionAnalyzer`, `SemanticDependencyFilter`, `DependencyDeduplicator`, `FrameworkNoiseFilter`, `PrimitiveTypeFilter` | `Analyzer` | Persistence, external integrations, IoC, EF, repositories. |
+| Shared | `BridgeMD.Core` | `IoCRegistrationModel`, `MethodModel`, `ParameterModel`, `ProjectModel`, `ProjectReferenceModel`, `SolutionModel`, `TypeDependencyModel`, `TypeModel` | none | Cross-cutting contracts and reusable primitives. |
 
 ## Project Dependencies
 

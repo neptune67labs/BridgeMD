@@ -7,8 +7,8 @@
 ## Capas detectadas
 
 - `Application`: 1 types; projects `BridgeMD.Markdown`
-- `Infrastructure`: 1 types; projects `BridgeMD.Roslyn`
-- `Shared`: 12 types; projects `BridgeMD.Core`
+- `Infrastructure`: 5 types; projects `BridgeMD.Roslyn`
+- `Shared`: 13 types; projects `BridgeMD.Core`
 
 ## Convenciones detectadas
 
@@ -25,19 +25,24 @@
 
 ## Tipos prioritarios para IA
 
-| Type | Score | Layer | Why |
-| --- | ---: | --- | --- |
-| `BridgeMD.Markdown.MarkdownDocumentationWriter` | 58 | Application | `Writer` |
-| `BridgeMD.Roslyn.SolutionAnalyzer` | 46 | Infrastructure | `Analyzer` |
-| `BridgeMD.Core.IoCRegistrationModel` | 18 | Shared | none |
-| `BridgeMD.Core.MethodModel` | 18 | Shared | none |
-| `BridgeMD.Core.ParameterModel` | 18 | Shared | none |
-| `BridgeMD.Core.ProjectModel` | 18 | Shared | none |
-| `BridgeMD.Core.ProjectReferenceModel` | 18 | Shared | none |
-| `BridgeMD.Core.SolutionModel` | 18 | Shared | none |
-| `BridgeMD.Core.TypeDependencyModel` | 18 | Shared | none |
-| `BridgeMD.Core.TypeModel` | 18 | Shared | none |
-| `BridgeMD.Core.ArchitectureLayer` | 3 | Shared | none |
-| `BridgeMD.Core.CodeTypeKind` | 3 | Shared | none |
-| `BridgeMD.Core.DependencyKind` | 3 | Shared | none |
-| `BridgeMD.Core.RelevanceCategory` | 3 | Shared | none |
+| Type | Role | Score | Layer | Why |
+| --- | --- | ---: | --- | --- |
+| `BridgeMD.Roslyn.SolutionAnalyzer` | Analyzer | 46 | Infrastructure | role Analyzer; patterns Analyzer; 2 semantic deps |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter` | Writer | 40 | Application | role Writer; patterns Writer |
+| `BridgeMD.Roslyn.SemanticDependencyFilter` | Unknown | 29 | Infrastructure | 3 semantic deps |
+| `BridgeMD.Roslyn.DependencyDeduplicator` | Unknown | 20 | Infrastructure | low architectural signal |
+| `BridgeMD.Roslyn.FrameworkNoiseFilter` | Unknown | 20 | Infrastructure | low architectural signal |
+| `BridgeMD.Roslyn.PrimitiveTypeFilter` | Unknown | 20 | Infrastructure | low architectural signal |
+| `BridgeMD.Core.IoCRegistrationModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.MethodModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.ParameterModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.ProjectModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.ProjectReferenceModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.SolutionModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.TypeDependencyModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.TypeModel` | Unknown | 18 | Shared | low architectural signal |
+| `BridgeMD.Core.ArchitecturalRole` | Unknown | 3 | Shared | low architectural signal |
+| `BridgeMD.Core.ArchitectureLayer` | Unknown | 3 | Shared | low architectural signal |
+| `BridgeMD.Core.CodeTypeKind` | Unknown | 3 | Shared | low architectural signal |
+| `BridgeMD.Core.DependencyKind` | Unknown | 3 | Shared | low architectural signal |
+| `BridgeMD.Core.RelevanceCategory` | Unknown | 3 | Shared | low architectural signal |

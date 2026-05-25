@@ -45,6 +45,7 @@ public sealed record TypeModel(
     string ProjectName,
     string? FilePath,
     ArchitectureLayer Layer,
+    ArchitecturalRole ArchitecturalRole,
     string? BaseType,
     IReadOnlyList<string> Interfaces,
     IReadOnlyList<MethodModel> PublicMethods,
@@ -97,6 +98,35 @@ public enum ArchitectureLayer
     API,
     Shared,
     Tests
+}
+
+public enum ArchitecturalRole
+{
+    Unknown,
+    Controller,
+    Endpoint,
+    Repository,
+    DbContext,
+    Entity,
+    AggregateRoot,
+    ValueObject,
+    Specification,
+    CQRSHandler,
+    Command,
+    Query,
+    ApplicationService,
+    DomainService,
+    Middleware,
+    DTO,
+    ViewModel,
+    Configuration,
+    Mapper,
+    HostedService,
+    Factory,
+    Adapter,
+    Decorator,
+    Analyzer,
+    Writer
 }
 
 public enum RelevanceCategory

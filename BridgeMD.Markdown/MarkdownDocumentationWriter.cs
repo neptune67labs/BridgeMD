@@ -20,7 +20,15 @@ public sealed class MarkdownDocumentationWriter
             ["DEPENDENCY_GRAPH.md"] = RenderDependencyGraph(solution),
             ["CONVENTIONS.md"] = RenderConventions(solution),
             ["DOMAINS.md"] = RenderDomains(solution),
-            ["DANGEROUS_ZONES.md"] = RenderDangerousZones(solution)
+            ["DANGEROUS_ZONES.md"] = RenderDangerousZones(solution),
+            ["important-types.md"] = RenderImportantTypes(solution),
+            ["high-relevance-types.md"] = RenderHighRelevanceTypes(solution),
+            ["architectural-hotspots.md"] = RenderArchitecturalHotspots(solution),
+            ["core-domain-types.md"] = RenderCoreDomainTypes(solution),
+            ["IOC_GRAPH.md"] = RenderIocGraph(solution),
+            ["composition-roots.md"] = RenderCompositionRoots(solution),
+            ["REQUEST_FLOWS.md"] = RenderRequestFlows(solution),
+            ["application-flows.md"] = RenderApplicationFlows(solution)
         };
 
         foreach (var file in files)
@@ -46,11 +54,11 @@ public sealed class MarkdownDocumentationWriter
 
         builder.AppendLine("## Projects");
         builder.AppendLine();
-        builder.AppendLine("| Project | Layer | Frameworks | Types | Patterns |");
-        builder.AppendLine("| --- | --- | --- | ---: | --- |");
+        builder.AppendLine("| Project | Layer | Frameworks | Types | Roles | Patterns |");
+        builder.AppendLine("| --- | --- | --- | ---: | --- | --- |");
         foreach (var project in solution.Projects)
         {
-            builder.AppendLine($"| `{Escape(project.Name)}` | {project.Layer} | {InlineList(project.TargetFrameworks)} | {project.Types.Count} | {InlineList(project.Patterns)} |");
+            builder.AppendLine($"| `{Escape(project.Name)}` | {project.Layer} | {InlineList(project.TargetFrameworks)} | {project.Types.Count} | {InlineList(project.Types.Select(type => type.ArchitecturalRole.ToString()).Where(role => role != nameof(ArchitecturalRole.Unknown)))} | {InlineList(project.Patterns)} |");
         }
 
         builder.AppendLine();
@@ -101,12 +109,12 @@ public sealed class MarkdownDocumentationWriter
             builder.AppendLine($"- Technologies: {InlineList(project.Technologies)}");
             builder.AppendLine($"- Detected patterns: {InlineList(project.Patterns)}");
             builder.AppendLine();
-            builder.AppendLine("| Type | Layer | Score | Category | Patterns |");
-            builder.AppendLine("| --- | --- | ---: | --- | --- |");
+            builder.AppendLine("| Type | Role | Layer | Score | Category | Patterns |");
+            builder.AppendLine("| --- | --- | --- | ---: | --- | --- |");
 
             foreach (var type in PrimaryTypes(project.Types).Take(80))
             {
-                builder.AppendLine($"| `{Escape(type.FullName)}` | {type.Layer} | {type.RelevanceScore} | {type.RelevanceCategory} | {InlineList(type.Patterns)} |");
+                builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | {type.Layer} | {type.RelevanceScore} | {type.RelevanceCategory} | {InlineList(type.Patterns)} |");
             }
 
             builder.AppendLine();
@@ -128,8 +136,10 @@ public sealed class MarkdownDocumentationWriter
             builder.AppendLine("| Field | Value |");
             builder.AppendLine("| --- | --- |");
             builder.AppendLine($"| Kind | {type.Kind} |");
+            builder.AppendLine($"| Role | {type.ArchitecturalRole} |");
             builder.AppendLine($"| Layer | {type.Layer} |");
             builder.AppendLine($"| Relevance | {type.RelevanceCategory} / {type.RelevanceScore} |");
+            builder.AppendLine($"| Reason | {PlainValue(ScoreReason(type))} |");
             builder.AppendLine($"| Namespace | `{Escape(type.Namespace)}` |");
             builder.AppendLine($"| Project | `{Escape(type.ProjectName)}` |");
             builder.AppendLine($"| Base type | {InlineValue(type.BaseType)} |");
@@ -238,11 +248,11 @@ public sealed class MarkdownDocumentationWriter
         builder.AppendLine();
         builder.AppendLine("## Tipos prioritarios para IA");
         builder.AppendLine();
-        builder.AppendLine("| Type | Score | Layer | Why |");
-        builder.AppendLine("| --- | ---: | --- | --- |");
+        builder.AppendLine("| Type | Role | Score | Layer | Why |");
+        builder.AppendLine("| --- | --- | ---: | --- | --- |");
         foreach (var type in PrimaryTypes(solution.Projects.SelectMany(project => project.Types)).Take(30))
         {
-            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.RelevanceScore} | {type.Layer} | {InlineList(type.Patterns.Concat(type.Technologies))} |");
+            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | {type.RelevanceScore} | {type.Layer} | {PlainValue(ScoreReason(type))} |");
         }
 
         return builder.ToString();
@@ -255,13 +265,14 @@ public sealed class MarkdownDocumentationWriter
         builder.AppendLine();
         builder.AppendLine("## Layers");
         builder.AppendLine();
-        builder.AppendLine("| Layer | Projects | Key Types | Responsibility |");
-        builder.AppendLine("| --- | --- | --- | --- |");
+        builder.AppendLine("| Layer | Projects | Key Types | Key Roles | Responsibility |");
+        builder.AppendLine("| --- | --- | --- | --- | --- |");
         foreach (var layer in LayerGroups(solution))
         {
             var projects = layer.Select(type => type.ProjectName);
             var keyTypes = PrimaryTypes(layer).Take(8).Select(type => type.Name);
-            builder.AppendLine($"| {layer.Key} | {InlineList(projects)} | {InlineList(keyTypes)} | {LayerResponsibility(layer.Key)} |");
+            var roles = layer.Select(type => type.ArchitecturalRole.ToString()).Where(role => role != nameof(ArchitecturalRole.Unknown));
+            builder.AppendLine($"| {layer.Key} | {InlineList(projects)} | {InlineList(keyTypes)} | {InlineList(roles)} | {LayerResponsibility(layer.Key)} |");
         }
 
         builder.AppendLine();
@@ -406,6 +417,187 @@ public sealed class MarkdownDocumentationWriter
         return builder.ToString();
     }
 
+    private static string RenderImportantTypes(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Important Types");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Role | Layer | Score | Reason |");
+        builder.AppendLine("| --- | --- | --- | ---: | --- |");
+        foreach (var type in ImportantTypes(solution).Take(120))
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | {type.Layer} | {type.RelevanceScore} | {PlainValue(ScoreReason(type))} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderHighRelevanceTypes(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# High Relevance Types");
+        builder.AppendLine();
+        foreach (var type in ImportantTypes(solution).Where(type => type.RelevanceCategory == RelevanceCategory.High).Take(80))
+        {
+            builder.AppendLine($"## {Escape(type.Name)}");
+            builder.AppendLine();
+            builder.AppendLine($"- Full name: `{Escape(type.FullName)}`");
+            builder.AppendLine($"- Role: `{type.ArchitecturalRole}`");
+            builder.AppendLine($"- Layer: `{type.Layer}`");
+            builder.AppendLine($"- Importance: `{type.RelevanceCategory}` / `{type.RelevanceScore}`");
+            builder.AppendLine($"- Reason: {PlainValue(ScoreReason(type))}");
+            builder.AppendLine($"- Dependencies: {InlineList(SemanticGraphDependencies(type).Take(8).Select(dependency => dependency.TargetType))}");
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderArchitecturalHotspots(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Architectural Hotspots");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Role | Layer | Signals |");
+        builder.AppendLine("| --- | --- | --- | --- |");
+        foreach (var type in ImportantTypes(solution)
+            .Where(type => type.ArchitecturalRole is ArchitecturalRole.DbContext
+                or ArchitecturalRole.Controller
+                or ArchitecturalRole.Endpoint
+                or ArchitecturalRole.CQRSHandler
+                or ArchitecturalRole.Repository
+                or ArchitecturalRole.Middleware
+                or ArchitecturalRole.Configuration
+                or ArchitecturalRole.Decorator)
+            .Take(100))
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | {type.Layer} | {PlainValue(ScoreReason(type))} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderCoreDomainTypes(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Core Domain Types");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Role | Score | Namespace |");
+        builder.AppendLine("| --- | --- | ---: | --- |");
+        foreach (var type in ImportantTypes(solution)
+            .Where(type => type.Layer == ArchitectureLayer.Domain
+                || type.ArchitecturalRole is ArchitecturalRole.Entity or ArchitecturalRole.AggregateRoot or ArchitecturalRole.ValueObject)
+            .Take(120))
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | {type.RelevanceScore} | `{Escape(type.Namespace)}` |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderIocGraph(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# IoC Graph");
+        builder.AppendLine();
+        builder.AppendLine("| Project | Interface | Implementation | Lifetime | Location |");
+        builder.AppendLine("| --- | --- | --- | --- | --- |");
+
+        var registrations = solution.Projects
+            .SelectMany(project => project.IoCRegistrations.Select(registration => (project.Name, Registration: registration)))
+            .OrderBy(item => item.Name, StringComparer.Ordinal)
+            .ThenBy(item => item.Registration.InterfaceType, StringComparer.Ordinal)
+            .ToArray();
+
+        if (registrations.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none | none |");
+        }
+
+        foreach (var item in registrations)
+        {
+            builder.AppendLine($"| `{Escape(item.Name)}` | `{Escape(item.Registration.InterfaceType)}` | `{Escape(item.Registration.ImplementationType)}` | `{Escape(item.Registration.RegistrationKind)}` | `{Escape(item.Registration.Location)}` |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderCompositionRoots(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Composition Roots");
+        builder.AppendLine();
+        builder.AppendLine("| Project | Location | Registrations |");
+        builder.AppendLine("| --- | --- | ---: |");
+
+        var roots = solution.Projects
+            .SelectMany(project => project.IoCRegistrations.Select(registration => (project.Name, registration.Location)))
+            .GroupBy(item => $"{item.Name}:{item.Location}", StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .ToArray();
+
+        if (roots.Length == 0)
+        {
+            builder.AppendLine("| none | none | 0 |");
+        }
+
+        foreach (var root in roots)
+        {
+            var first = root.First();
+            builder.AppendLine($"| `{Escape(first.Name)}` | `{Escape(first.Location)}` | {root.Count()} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderRequestFlows(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Request Flows");
+        builder.AppendLine();
+
+        var entryPoints = RequestEntryPoints(solution).Take(80).ToArray();
+        if (entryPoints.Length == 0)
+        {
+            builder.AppendLine("- none");
+            return builder.ToString();
+        }
+
+        foreach (var entryPoint in entryPoints)
+        {
+            builder.AppendLine($"## {Escape(entryPoint.FullName)}");
+            builder.AppendLine();
+            builder.AppendLine($"- Entry role: `{entryPoint.ArchitecturalRole}`");
+            builder.AppendLine($"- Layer: `{entryPoint.Layer}`");
+            builder.AppendLine($"- Flow: {FormatFlow(entryPoint, solution)}");
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderApplicationFlows(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Application Flows");
+        builder.AppendLine();
+        builder.AppendLine("| Entry Point | Flow |");
+        builder.AppendLine("| --- | --- |");
+        var entryPoints = RequestEntryPoints(solution).Take(80).ToArray();
+        if (entryPoints.Length == 0)
+        {
+            builder.AppendLine("| none | none |");
+            return builder.ToString();
+        }
+
+        foreach (var entryPoint in entryPoints)
+        {
+            builder.AppendLine($"| `{Escape(entryPoint.FullName)}` | {FormatFlow(entryPoint, solution)} |");
+        }
+
+        return builder.ToString();
+    }
+
     private static string InferPurpose(ProjectModel project)
     {
         if (project.Types.Count == 0)
@@ -531,6 +723,191 @@ public sealed class MarkdownDocumentationWriter
             .Where(type => !type.IsGenerated && !type.IsMigration)
             .OrderByDescending(type => type.RelevanceScore)
             .ThenBy(type => type.FullName, StringComparer.Ordinal);
+    }
+
+    private static IEnumerable<TypeModel> ImportantTypes(SolutionModel solution)
+    {
+        return PrimaryTypes(solution.Projects.SelectMany(project => project.Types))
+            .Where(type => type.RelevanceCategory is RelevanceCategory.High or RelevanceCategory.Medium
+                || type.ArchitecturalRole is not ArchitecturalRole.Unknown and not ArchitecturalRole.DTO and not ArchitecturalRole.ViewModel)
+            .Where(type => type.Layer != ArchitectureLayer.Tests || type.RelevanceScore >= 75)
+            .OrderByDescending(type => RoleWeight(type.ArchitecturalRole))
+            .ThenBy(type => type.Layer == ArchitectureLayer.Tests)
+            .ThenByDescending(type => type.RelevanceScore)
+            .ThenBy(type => type.FullName, StringComparer.Ordinal);
+    }
+
+    private static IEnumerable<TypeModel> RequestEntryPoints(SolutionModel solution)
+    {
+        return ImportantTypes(solution)
+            .Where(type => type.ArchitecturalRole is ArchitecturalRole.Controller
+                or ArchitecturalRole.Endpoint
+                or ArchitecturalRole.CQRSHandler
+                or ArchitecturalRole.ApplicationService);
+    }
+
+    private static int RoleWeight(ArchitecturalRole role)
+    {
+        return role switch
+        {
+            ArchitecturalRole.DbContext => 100,
+            ArchitecturalRole.Controller or ArchitecturalRole.Endpoint => 95,
+            ArchitecturalRole.CQRSHandler => 90,
+            ArchitecturalRole.Repository => 85,
+            ArchitecturalRole.ApplicationService or ArchitecturalRole.DomainService => 80,
+            ArchitecturalRole.Middleware => 75,
+            ArchitecturalRole.Configuration => 70,
+            ArchitecturalRole.Specification => 65,
+            ArchitecturalRole.Entity or ArchitecturalRole.AggregateRoot => 60,
+            ArchitecturalRole.Decorator or ArchitecturalRole.Adapter => 55,
+            ArchitecturalRole.Mapper => 50,
+            _ => 10
+        };
+    }
+
+    private static string ScoreReason(TypeModel type)
+    {
+        var reasons = new List<string>();
+        if (type.ArchitecturalRole != ArchitecturalRole.Unknown)
+        {
+            reasons.Add($"role {type.ArchitecturalRole}");
+        }
+
+        if (type.Patterns.Count > 0)
+        {
+            reasons.Add($"patterns {string.Join(", ", type.Patterns.Take(4))}");
+        }
+
+        if (type.Technologies.Count > 0)
+        {
+            reasons.Add($"tech {string.Join(", ", type.Technologies.Take(4))}");
+        }
+
+        var dependencyCount = SemanticGraphDependencies(type).Count();
+        if (dependencyCount > 0)
+        {
+            reasons.Add($"{dependencyCount} semantic deps");
+        }
+
+        if (type.IsDangerousZone)
+        {
+            reasons.Add("dangerous zone");
+        }
+
+        return reasons.Count == 0 ? "low architectural signal" : string.Join("; ", reasons);
+    }
+
+    private static string FormatFlow(TypeModel entryPoint, SolutionModel solution)
+    {
+        var allTypes = solution.Projects.SelectMany(project => project.Types).ToArray();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var nodes = new List<string>();
+        AppendFlow(entryPoint, solution, allTypes, visited, nodes, depth: 0);
+        return string.Join(" -> ", nodes.Distinct(StringComparer.Ordinal));
+    }
+
+    private static void AppendFlow(
+        TypeModel current,
+        SolutionModel solution,
+        IReadOnlyList<TypeModel> allTypes,
+        ISet<string> visited,
+        ICollection<string> nodes,
+        int depth)
+    {
+        if (depth > 4 || !visited.Add(current.FullName))
+        {
+            return;
+        }
+
+        nodes.Add($"{current.ArchitecturalRole}:{current.Name}");
+
+        var nextTypes = SemanticGraphDependencies(current)
+            .Select(dependency => FindTypeByDependency(solution, allTypes, dependency.TargetType, dependency.Kind))
+            .Where(type => type is not null)
+            .Cast<TypeModel>()
+            .Where(type => type.ArchitecturalRole is not ArchitecturalRole.DTO and not ArchitecturalRole.ViewModel and not ArchitecturalRole.Unknown)
+            .OrderByDescending(type => RoleWeight(type.ArchitecturalRole))
+            .ThenByDescending(type => type.RelevanceScore)
+            .Take(3)
+            .ToArray();
+
+        foreach (var next in nextTypes)
+        {
+            AppendFlow(next, solution, allTypes, visited, nodes, depth + 1);
+        }
+    }
+
+    private static TypeModel? FindTypeByDependency(
+        SolutionModel solution,
+        IEnumerable<TypeModel> allTypes,
+        string dependency,
+        DependencyKind kind)
+    {
+        var all = allTypes.ToArray();
+        var genericDefinition = GenericDefinition(dependency);
+        var direct = FindIocImplementation(solution, all, dependency, genericDefinition)
+            ?? all.FirstOrDefault(type => string.Equals(type.FullName, dependency, StringComparison.Ordinal))
+            ?? all.FirstOrDefault(type => string.Equals(GenericDefinition(type.FullName), genericDefinition, StringComparison.Ordinal))
+            ?? all.FirstOrDefault(type => string.Equals(type.Name, dependency, StringComparison.Ordinal));
+
+        if (direct is not null)
+        {
+            return direct;
+        }
+
+        if (kind == DependencyKind.DbSet)
+        {
+            var inner = StripGenericWrapper(dependency);
+            return all.FirstOrDefault(type => string.Equals(type.FullName, inner, StringComparison.Ordinal))
+                ?? all.FirstOrDefault(type => inner.EndsWith($".{type.Name}", StringComparison.Ordinal));
+        }
+
+        return all.FirstOrDefault(type => dependency.EndsWith($".{type.Name}", StringComparison.Ordinal) || string.Equals(type.Name, dependency, StringComparison.Ordinal));
+    }
+
+    private static TypeModel? FindIocImplementation(
+        SolutionModel solution,
+        IReadOnlyList<TypeModel> allTypes,
+        string dependency,
+        string genericDefinition)
+    {
+        var registration = solution.Projects
+            .SelectMany(project => project.IoCRegistrations)
+            .FirstOrDefault(candidate =>
+                string.Equals(candidate.InterfaceType, dependency, StringComparison.Ordinal)
+                || string.Equals(GenericDefinition(candidate.InterfaceType), genericDefinition, StringComparison.Ordinal));
+
+        if (registration is null)
+        {
+            return null;
+        }
+
+        var implementationDefinition = GenericDefinition(registration.ImplementationType);
+        return allTypes.FirstOrDefault(type => string.Equals(type.FullName, registration.ImplementationType, StringComparison.Ordinal))
+            ?? allTypes.FirstOrDefault(type => string.Equals(GenericDefinition(type.FullName), implementationDefinition, StringComparison.Ordinal));
+    }
+
+    private static string StripGenericWrapper(string typeName)
+    {
+        var start = typeName.IndexOf('<', StringComparison.Ordinal);
+        var end = typeName.LastIndexOf('>');
+        if (start >= 0 && end > start)
+        {
+            return typeName[(start + 1)..end].Split(',')[0].Trim();
+        }
+
+        return typeName;
+    }
+
+    private static string GenericDefinition(string typeName)
+    {
+        var start = typeName.IndexOf('<', StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return typeName;
+        }
+
+        return $"{typeName[..start]}<>";
     }
 
     private static IEnumerable<TypeModel> DangerousTypes(SolutionModel solution)

@@ -10,8 +10,8 @@
 - Technologies: none
 - Detected patterns: none
 
-| Type | Layer | Score | Category | Patterns |
-| --- | --- | ---: | --- | --- |
+| Type | Role | Layer | Score | Category | Patterns |
+| --- | --- | --- | ---: | --- | --- |
 
 ## BridgeMD.Core
 
@@ -23,20 +23,21 @@
 - Technologies: none
 - Detected patterns: none
 
-| Type | Layer | Score | Category | Patterns |
-| --- | --- | ---: | --- | --- |
-| `BridgeMD.Core.IoCRegistrationModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.MethodModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.ParameterModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.ProjectModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.ProjectReferenceModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.SolutionModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.TypeDependencyModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.TypeModel` | Shared | 18 | Low | none |
-| `BridgeMD.Core.ArchitectureLayer` | Shared | 3 | Low | none |
-| `BridgeMD.Core.CodeTypeKind` | Shared | 3 | Low | none |
-| `BridgeMD.Core.DependencyKind` | Shared | 3 | Low | none |
-| `BridgeMD.Core.RelevanceCategory` | Shared | 3 | Low | none |
+| Type | Role | Layer | Score | Category | Patterns |
+| --- | --- | --- | ---: | --- | --- |
+| `BridgeMD.Core.IoCRegistrationModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.MethodModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.ParameterModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.ProjectModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.ProjectReferenceModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.SolutionModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.TypeDependencyModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.TypeModel` | Unknown | Shared | 18 | Low | none |
+| `BridgeMD.Core.ArchitecturalRole` | Unknown | Shared | 3 | Low | none |
+| `BridgeMD.Core.ArchitectureLayer` | Unknown | Shared | 3 | Low | none |
+| `BridgeMD.Core.CodeTypeKind` | Unknown | Shared | 3 | Low | none |
+| `BridgeMD.Core.DependencyKind` | Unknown | Shared | 3 | Low | none |
+| `BridgeMD.Core.RelevanceCategory` | Unknown | Shared | 3 | Low | none |
 
 ## BridgeMD.Markdown
 
@@ -48,9 +49,9 @@
 - Technologies: none
 - Detected patterns: `Writer`
 
-| Type | Layer | Score | Category | Patterns |
-| --- | --- | ---: | --- | --- |
-| `BridgeMD.Markdown.MarkdownDocumentationWriter` | Application | 58 | Medium | `Writer` |
+| Type | Role | Layer | Score | Category | Patterns |
+| --- | --- | --- | ---: | --- | --- |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter` | Writer | Application | 40 | Medium | `Writer` |
 
 ## BridgeMD.Roslyn
 
@@ -62,7 +63,11 @@
 - Technologies: `MSBuildWorkspace`, `Roslyn`
 - Detected patterns: `Analyzer`
 
-| Type | Layer | Score | Category | Patterns |
-| --- | --- | ---: | --- | --- |
-| `BridgeMD.Roslyn.SolutionAnalyzer` | Infrastructure | 46 | Medium | `Analyzer` |
+| Type | Role | Layer | Score | Category | Patterns |
+| --- | --- | --- | ---: | --- | --- |
+| `BridgeMD.Roslyn.SolutionAnalyzer` | Analyzer | Infrastructure | 46 | Medium | `Analyzer` |
+| `BridgeMD.Roslyn.SemanticDependencyFilter` | Unknown | Infrastructure | 29 | Low | none |
+| `BridgeMD.Roslyn.DependencyDeduplicator` | Unknown | Infrastructure | 20 | Low | none |
+| `BridgeMD.Roslyn.FrameworkNoiseFilter` | Unknown | Infrastructure | 20 | Low | none |
+| `BridgeMD.Roslyn.PrimitiveTypeFilter` | Unknown | Infrastructure | 20 | Low | none |
 
