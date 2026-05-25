@@ -51,7 +51,11 @@
 
 | Type | Role | Layer | Score | Category | Patterns |
 | --- | --- | --- | ---: | --- | --- |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.RiskProfile` | Mapper | Application | 42 | Medium | `Writer` |
 | `BridgeMD.Markdown.MarkdownDocumentationWriter` | Writer | Application | 40 | Medium | `Writer` |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.BoundedContextModel` | Writer | Application | 30 | Low | `Writer` |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.DomainRelationship` | Writer | Domain | 30 | Low | `Writer` |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.LanguageTerm` | Writer | Application | 30 | Low | `Writer` |
 
 ## BridgeMD.Roslyn
 

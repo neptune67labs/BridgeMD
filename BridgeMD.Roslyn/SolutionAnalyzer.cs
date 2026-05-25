@@ -192,6 +192,7 @@ public sealed class SolutionAnalyzer
             dependencies,
             relevance.Category,
             relevance.Score,
+            declaration.GetLocation().GetLineSpan().EndLinePosition.Line - declaration.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
             isGenerated,
             isMigration,
             isDangerousZone,
@@ -626,7 +627,14 @@ public sealed class SolutionAnalyzer
         try
         {
             var document = XDocument.Parse($"<root>{xml}</root>");
-            var text = NormalizeWhitespace(document.Descendants("summary").FirstOrDefault()?.Value ?? string.Empty);
+            var fragments = document.Descendants("summary")
+                .Concat(document.Descendants("remarks"))
+                .Concat(document.Descendants("param"))
+                .Select(element => NormalizeWhitespace(element.Value))
+                .Where(text => text.Length >= 12 && !IsLowValueComment(text))
+                .Take(3)
+                .ToArray();
+            var text = string.Join(" ", fragments);
             if (text.Length < 12 || IsLowValueComment(text))
             {
                 return null;

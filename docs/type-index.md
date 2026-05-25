@@ -23,6 +23,29 @@ Public methods:
 Semantic dependencies:
 - none
 
+## BridgeMD.Markdown.MarkdownDocumentationWriter.RiskProfile
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Mapper |
+| Layer | Application |
+| Relevance | Medium / 42 |
+| Reason | role Mapper; patterns Writer |
+| Namespace | `BridgeMD.Markdown` |
+| Project | `BridgeMD.Markdown` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Markdown.MarkdownDocumentationWriter.RiskProfile>` |
+| Patterns | `Writer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
 ## BridgeMD.Markdown.MarkdownDocumentationWriter
 
 | Field | Value |
@@ -42,6 +65,75 @@ Semantic dependencies:
 
 Public methods:
 - `Task WriteAsync(SolutionModel solution, CancellationToken cancellationToken)`
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Markdown.MarkdownDocumentationWriter.BoundedContextModel
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Writer |
+| Layer | Application |
+| Relevance | Low / 30 |
+| Reason | role Writer; patterns Writer |
+| Namespace | `BridgeMD.Markdown` |
+| Project | `BridgeMD.Markdown` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Markdown.MarkdownDocumentationWriter.BoundedContextModel>` |
+| Patterns | `Writer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Markdown.MarkdownDocumentationWriter.DomainRelationship
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Writer |
+| Layer | Domain |
+| Relevance | Low / 30 |
+| Reason | role Writer; patterns Writer |
+| Namespace | `BridgeMD.Markdown` |
+| Project | `BridgeMD.Markdown` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Markdown.MarkdownDocumentationWriter.DomainRelationship>` |
+| Patterns | `Writer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Markdown.MarkdownDocumentationWriter.LanguageTerm
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Writer |
+| Layer | Application |
+| Relevance | Low / 30 |
+| Reason | role Writer; patterns Writer |
+| Namespace | `BridgeMD.Markdown` |
+| Project | `BridgeMD.Markdown` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Markdown.MarkdownDocumentationWriter.LanguageTerm>` |
+| Patterns | `Writer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
 
 Semantic dependencies:
 - none

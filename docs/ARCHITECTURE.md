@@ -4,7 +4,8 @@
 
 | Layer | Projects | Key Types | Key Roles | Responsibility |
 | --- | --- | --- | --- | --- |
-| Application | `BridgeMD.Markdown` | `MarkdownDocumentationWriter` | `Writer` | Use cases, orchestration, commands, queries, services. |
+| Application | `BridgeMD.Markdown` | `RiskProfile`, `MarkdownDocumentationWriter`, `BoundedContextModel`, `LanguageTerm` | `Mapper`, `Writer` | Use cases, orchestration, commands, queries, services. |
+| Domain | `BridgeMD.Markdown` | `DomainRelationship` | `Writer` | Business concepts, rules, entities, aggregates. |
 | Infrastructure | `BridgeMD.Roslyn` | `SolutionAnalyzer`, `SemanticDependencyFilter`, `DependencyDeduplicator`, `FrameworkNoiseFilter`, `PrimitiveTypeFilter` | `Analyzer` | Persistence, external integrations, IoC, EF, repositories. |
 | Shared | `BridgeMD.Core` | `IoCRegistrationModel`, `MethodModel`, `ParameterModel`, `ProjectModel`, `ProjectReferenceModel`, `SolutionModel`, `TypeDependencyModel`, `TypeModel` | none | Cross-cutting contracts and reusable primitives. |
 

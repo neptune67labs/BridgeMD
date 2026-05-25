@@ -2,11 +2,13 @@
 
 ## Arquitectura inferida
 
+- `Clean Architecture`
 - `Layered Architecture`
 
 ## Capas detectadas
 
-- `Application`: 1 types; projects `BridgeMD.Markdown`
+- `Application`: 4 types; projects `BridgeMD.Markdown`
+- `Domain`: 1 types; projects `BridgeMD.Markdown`
 - `Infrastructure`: 5 types; projects `BridgeMD.Roslyn`
 - `Shared`: 13 types; projects `BridgeMD.Core`
 
@@ -28,7 +30,11 @@
 | Type | Role | Score | Layer | Why |
 | --- | --- | ---: | --- | --- |
 | `BridgeMD.Roslyn.SolutionAnalyzer` | Analyzer | 46 | Infrastructure | role Analyzer; patterns Analyzer; 2 semantic deps |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.RiskProfile` | Mapper | 42 | Application | role Mapper; patterns Writer |
 | `BridgeMD.Markdown.MarkdownDocumentationWriter` | Writer | 40 | Application | role Writer; patterns Writer |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.BoundedContextModel` | Writer | 30 | Application | role Writer; patterns Writer |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.DomainRelationship` | Writer | 30 | Domain | role Writer; patterns Writer |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.LanguageTerm` | Writer | 30 | Application | role Writer; patterns Writer |
 | `BridgeMD.Roslyn.SemanticDependencyFilter` | Unknown | 29 | Infrastructure | 3 semantic deps |
 | `BridgeMD.Roslyn.DependencyDeduplicator` | Unknown | 20 | Infrastructure | low architectural signal |
 | `BridgeMD.Roslyn.FrameworkNoiseFilter` | Unknown | 20 | Infrastructure | low architectural signal |

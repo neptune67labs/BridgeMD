@@ -28,7 +28,15 @@ public sealed class MarkdownDocumentationWriter
             ["IOC_GRAPH.md"] = RenderIocGraph(solution),
             ["composition-roots.md"] = RenderCompositionRoots(solution),
             ["REQUEST_FLOWS.md"] = RenderRequestFlows(solution),
-            ["application-flows.md"] = RenderApplicationFlows(solution)
+            ["application-flows.md"] = RenderApplicationFlows(solution),
+            ["BUSINESS_DOMAIN.md"] = RenderBusinessDomain(solution),
+            ["BOUNDED_CONTEXTS.md"] = RenderBoundedContexts(solution),
+            ["DOMAIN_RELATIONSHIPS.md"] = RenderDomainRelationships(solution),
+            ["USE_CASES.md"] = RenderUseCases(solution),
+            ["UBIQUITOUS_LANGUAGE.md"] = RenderUbiquitousLanguage(solution),
+            ["ARCHITECTURAL_HOTSPOTS.md"] = RenderArchitecturalHotspotsIntelligence(solution),
+            ["LEGACY_ZONES.md"] = RenderLegacyZones(solution),
+            ["RISK_AREAS.md"] = RenderRiskAreas(solution)
         };
 
         foreach (var file in files)
@@ -598,6 +606,192 @@ public sealed class MarkdownDocumentationWriter
         return builder.ToString();
     }
 
+    private static string RenderBusinessDomain(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Business Domain");
+        builder.AppendLine();
+        builder.AppendLine("## What This System Appears To Do");
+        builder.AppendLine();
+        builder.AppendLine($"- Primary domain language: {InlineList(UbiquitousTerms(solution).Take(12).Select(term => term.Term))}");
+        builder.AppendLine($"- Core contexts: {InlineList(BoundedContexts(solution).Take(10).Select(context => context.Name))}");
+        builder.AppendLine($"- Core entities: {InlineList(CoreBusinessTypes(solution).Take(12).Select(type => type.Name))}");
+        builder.AppendLine();
+        builder.AppendLine("## Core Business Entities");
+        builder.AppendLine();
+
+        foreach (var type in CoreBusinessTypes(solution).Take(40))
+        {
+            builder.AppendLine($"## {Escape(type.Name)}");
+            builder.AppendLine();
+            builder.AppendLine($"- Role: `{type.ArchitecturalRole}`");
+            builder.AppendLine($"- Context: `{InferBoundedContext(type)}`");
+            builder.AppendLine($"- Namespace: `{Escape(type.Namespace)}`");
+            builder.AppendLine($"- Responsibilities: {BusinessResponsibilities(type)}");
+            builder.AppendLine($"- Used by: {InlineList(TypesReferencing(solution, type).Take(8).Select(reference => reference.Name))}");
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderBoundedContexts(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Bounded Contexts");
+        builder.AppendLine();
+
+        foreach (var context in BoundedContexts(solution).Take(30))
+        {
+            builder.AppendLine($"## {Escape(context.Name)}");
+            builder.AppendLine();
+            builder.AppendLine($"- Projects: {InlineList(context.Types.Select(type => type.ProjectName))}");
+            builder.AppendLine($"- Contains: {InlineList(context.Types.Where(IsDomainType).Take(10).Select(type => type.Name))}");
+            builder.AppendLine($"- Services: {InlineList(context.Types.Where(type => type.ArchitecturalRole is ArchitecturalRole.ApplicationService or ArchitecturalRole.DomainService).Take(10).Select(type => type.Name))}");
+            builder.AppendLine($"- Entry points: {InlineList(context.Types.Where(type => type.ArchitecturalRole is ArchitecturalRole.Controller or ArchitecturalRole.Endpoint or ArchitecturalRole.CQRSHandler).Take(10).Select(type => type.Name))}");
+            builder.AppendLine($"- Dependencies: {InlineList(ContextDependencies(solution, context.Name).Take(10))}");
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderDomainRelationships(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Domain Relationships");
+        builder.AppendLine();
+        builder.AppendLine("| Source | Relationship | Target | Evidence |");
+        builder.AppendLine("| --- | --- | --- | --- |");
+
+        var relationships = DomainRelationships(solution).Take(120).ToArray();
+        if (relationships.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none |");
+        }
+
+        foreach (var relationship in relationships)
+        {
+            builder.AppendLine($"| `{Escape(relationship.Source.Name)}` | {relationship.Kind} | `{Escape(relationship.Target.Name)}` | `{relationship.Evidence}` |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Mermaid");
+        builder.AppendLine();
+        builder.AppendLine("```mermaid");
+        builder.AppendLine("graph TD");
+        foreach (var relationship in relationships.Take(40))
+        {
+            builder.AppendLine($"  {MermaidId(relationship.Source.FullName)}[\"{EscapeMermaid(relationship.Source.Name)}\"] --> {MermaidId(relationship.Target.FullName)}[\"{EscapeMermaid(relationship.Target.Name)}\"]");
+        }
+        builder.AppendLine("```");
+
+        return builder.ToString();
+    }
+
+    private static string RenderUseCases(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Use Cases");
+        builder.AppendLine();
+        builder.AppendLine("| Use Case | Entry | Flow | Entities |");
+        builder.AppendLine("| --- | --- | --- | --- |");
+
+        var useCases = RequestEntryPoints(solution)
+            .Concat(solution.Projects.SelectMany(project => project.Types).Where(type => type.ArchitecturalRole is ArchitecturalRole.ApplicationService or ArchitecturalRole.CQRSHandler))
+            .DistinctBy(type => type.FullName)
+            .Where(type => !type.Name.StartsWith("I", StringComparison.Ordinal) || type.ArchitecturalRole == ArchitecturalRole.CQRSHandler)
+            .OrderByDescending(type => type.RelevanceScore)
+            .ThenBy(type => type.FullName, StringComparer.Ordinal)
+            .Take(100)
+            .ToArray();
+
+        if (useCases.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none |");
+        }
+
+        foreach (var useCase in useCases)
+        {
+            builder.AppendLine($"| `{Escape(HumanizeUseCaseName(useCase.Name))}` | `{Escape(useCase.FullName)}` | {FormatFlow(useCase, solution)} | {InlineList(FlowEntities(useCase, solution).Take(8).Select(type => type.Name))} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderUbiquitousLanguage(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Ubiquitous Language");
+        builder.AppendLine();
+        builder.AppendLine("| Term | Occurrences | Signals |");
+        builder.AppendLine("| --- | ---: | --- |");
+        foreach (var term in UbiquitousTerms(solution).Take(80))
+        {
+            builder.AppendLine($"| `{Escape(term.Term)}` | {term.Count} | {InlineList(term.Signals.Take(8))} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderArchitecturalHotspotsIntelligence(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Architectural Hotspots");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Risk | Fan-in | Fan-out | Size | Reasons |");
+        builder.AppendLine("| --- | ---: | ---: | ---: | ---: | --- |");
+        foreach (var hotspot in RiskProfiles(solution).Where(profile => profile.Score >= 35).Take(100))
+        {
+            builder.AppendLine($"| `{Escape(hotspot.Type.FullName)}` | {hotspot.Score} | {hotspot.FanIn} | {hotspot.FanOut} | {hotspot.Type.SourceLineCount} | {InlineList(hotspot.Reasons)} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderLegacyZones(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Legacy Zones");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Project | Signals |");
+        builder.AppendLine("| --- | --- | --- |");
+
+        var legacy = solution.Projects.SelectMany(project => project.Types)
+            .Where(type => LegacySignals(type, solution).Count > 0)
+            .OrderByDescending(type => LegacySignals(type, solution).Count)
+            .ThenBy(type => type.FullName, StringComparer.Ordinal)
+            .Take(100)
+            .ToArray();
+
+        if (legacy.Length == 0)
+        {
+            builder.AppendLine("| none | none | none |");
+        }
+
+        foreach (var type in legacy)
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | `{Escape(type.ProjectName)}` | {InlineList(LegacySignals(type, solution))} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderRiskAreas(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Risk Areas");
+        builder.AppendLine();
+        builder.AppendLine("| Type | RiskLevel | RiskScore | Reasons |");
+        builder.AppendLine("| --- | --- | ---: | --- |");
+        foreach (var profile in RiskProfiles(solution).Where(profile => profile.Score >= 25).Take(120))
+        {
+            builder.AppendLine($"| `{Escape(profile.Type.FullName)}` | {RiskLevel(profile.Score)} | {profile.Score} | {InlineList(profile.Reasons)} |");
+        }
+
+        return builder.ToString();
+    }
+
     private static string InferPurpose(ProjectModel project)
     {
         if (project.Types.Count == 0)
@@ -763,6 +957,400 @@ public sealed class MarkdownDocumentationWriter
             ArchitecturalRole.Mapper => 50,
             _ => 10
         };
+    }
+
+    private sealed record BoundedContextModel(string Name, IReadOnlyList<TypeModel> Types);
+
+    private sealed record DomainRelationship(TypeModel Source, TypeModel Target, string Kind, string Evidence);
+
+    private sealed record LanguageTerm(string Term, int Count, IReadOnlyList<string> Signals);
+
+    private sealed record RiskProfile(TypeModel Type, int Score, int FanIn, int FanOut, IReadOnlyList<string> Reasons);
+
+    private static IEnumerable<TypeModel> CoreBusinessTypes(SolutionModel solution)
+    {
+        return solution.Projects
+            .SelectMany(project => project.Types)
+            .Where(IsDomainType)
+            .OrderByDescending(type => type.ArchitecturalRole is ArchitecturalRole.AggregateRoot)
+            .ThenByDescending(type => TypesReferencing(solution, type).Count())
+            .ThenByDescending(type => type.RelevanceScore)
+            .ThenBy(type => type.FullName, StringComparer.Ordinal);
+    }
+
+    private static bool IsDomainType(TypeModel type)
+    {
+        return type.Layer != ArchitectureLayer.Tests
+            && (type.Layer == ArchitectureLayer.Domain
+                || type.ArchitecturalRole is ArchitecturalRole.AggregateRoot or ArchitecturalRole.Entity or ArchitecturalRole.ValueObject);
+    }
+
+    private static IReadOnlyList<BoundedContextModel> BoundedContexts(SolutionModel solution)
+    {
+        return solution.Projects
+            .SelectMany(project => project.Types)
+            .Where(type => type.Layer != ArchitectureLayer.Tests)
+            .GroupBy(InferBoundedContext, StringComparer.Ordinal)
+            .Where(group => group.Key != "General")
+            .Where(group => IsContextNameAllowed(group.Key))
+            .Where(group => group.Any(type => IsDomainType(type)
+                || type.ArchitecturalRole is ArchitecturalRole.ApplicationService or ArchitecturalRole.DomainService or ArchitecturalRole.CQRSHandler or ArchitecturalRole.Controller or ArchitecturalRole.Endpoint))
+            .Select(group => new BoundedContextModel(group.Key, group.OrderByDescending(type => type.RelevanceScore).ThenBy(type => type.FullName, StringComparer.Ordinal).ToArray()))
+            .OrderByDescending(context => context.Types.Count(IsDomainType) + context.Types.Count(type => type.ArchitecturalRole is ArchitecturalRole.ApplicationService or ArchitecturalRole.CQRSHandler or ArchitecturalRole.Endpoint))
+            .ThenBy(context => context.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string InferBoundedContext(TypeModel type)
+    {
+        var semanticName = $"{type.Namespace}.{type.Name}";
+        foreach (var knownContext in KnownBusinessContexts())
+        {
+            if (semanticName.Contains(knownContext, StringComparison.OrdinalIgnoreCase))
+            {
+                return knownContext;
+            }
+        }
+
+        if (type.Namespace.Contains("BasketAggregate", StringComparison.OrdinalIgnoreCase)) return "Basket";
+        if (type.Namespace.Contains("OrderAggregate", StringComparison.OrdinalIgnoreCase)) return "Order";
+        if (type.Namespace.Contains("BuyerAggregate", StringComparison.OrdinalIgnoreCase)) return "Buyer";
+
+        var candidates = type.Namespace
+            .Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Concat(SplitWords(type.Name))
+            .Where(IsBusinessToken)
+            .Select(NormalizeBusinessTerm)
+            .ToArray();
+
+        var preferred = candidates.FirstOrDefault(token => token is not ("Entities" or "Interfaces" or "Services" or "Data" or "Models" or "View" or "Views" or "Pages" or "Controllers" or "Endpoints"));
+        return preferred ?? "General";
+    }
+
+    private static IReadOnlyList<string> KnownBusinessContexts()
+    {
+        return
+        [
+            "Catalog",
+            "Basket",
+            "Order",
+            "Buyer",
+            "Payment",
+            "Identity",
+            "Account",
+            "Authorization",
+            "Authentication",
+            "Admin",
+            "Checkout",
+            "Invoice",
+            "Billing",
+            "Report",
+            "Inventory",
+            "Schedule",
+            "Patient",
+            "Clinical",
+            "Prescription"
+        ];
+    }
+
+    private static IEnumerable<string> ContextDependencies(SolutionModel solution, string context)
+    {
+        var allTypes = solution.Projects.SelectMany(project => project.Types).ToArray();
+        var contextTypes = allTypes.Where(type => InferBoundedContext(type) == context).ToArray();
+        return contextTypes
+            .SelectMany(type => SemanticGraphDependencies(type))
+            .Select(dependency => FindTypeByDependency(solution, allTypes, dependency.TargetType, dependency.Kind))
+            .Where(type => type is not null)
+            .Cast<TypeModel>()
+            .Select(InferBoundedContext)
+            .Where(targetContext => targetContext != context && targetContext != "General")
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal);
+    }
+
+    private static IEnumerable<TypeModel> TypesReferencing(SolutionModel solution, TypeModel target)
+    {
+        var targetDefinition = GenericDefinition(target.FullName);
+        return solution.Projects.SelectMany(project => project.Types)
+            .Where(type => type.Dependencies.Any(dependency =>
+                dependency.TargetType.Contains(target.FullName, StringComparison.Ordinal)
+                || GenericDefinition(dependency.TargetType).Equals(targetDefinition, StringComparison.Ordinal)
+                || dependency.TargetType.EndsWith($".{target.Name}", StringComparison.Ordinal)));
+    }
+
+    private static IReadOnlyList<DomainRelationship> DomainRelationships(SolutionModel solution)
+    {
+        var allTypes = solution.Projects.SelectMany(project => project.Types).ToArray();
+        return allTypes
+            .Where(IsDomainType)
+            .SelectMany(source => SemanticGraphDependencies(source)
+                .Select(dependency => (Dependency: dependency, Target: FindTypeByDependency(solution, allTypes, dependency.TargetType, dependency.Kind)))
+                .Where(item => item.Target is not null && IsDomainType(item.Target))
+                .Select(item => new DomainRelationship(source, item.Target!, RelationshipKind(source, item.Target!, item.Dependency), item.Dependency.Kind.ToString())))
+            .DistinctBy(relationship => $"{relationship.Source.FullName}->{relationship.Target.FullName}:{relationship.Kind}")
+            .OrderBy(relationship => relationship.Source.Name, StringComparer.Ordinal)
+            .ThenBy(relationship => relationship.Target.Name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string RelationshipKind(TypeModel source, TypeModel target, TypeDependencyModel dependency)
+    {
+        if (dependency.Kind == DependencyKind.DbSet)
+        {
+            return "persists";
+        }
+
+        if (source.ArchitecturalRole == ArchitecturalRole.AggregateRoot && target.ArchitecturalRole is ArchitecturalRole.Entity or ArchitecturalRole.ValueObject)
+        {
+            return "contains";
+        }
+
+        return dependency.Kind is DependencyKind.Property or DependencyKind.Field ? "has" : "uses";
+    }
+
+    private static IEnumerable<TypeModel> FlowEntities(TypeModel entryPoint, SolutionModel solution)
+    {
+        var allTypes = solution.Projects.SelectMany(project => project.Types).ToArray();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var entities = new List<TypeModel>();
+        CollectFlowEntities(entryPoint, solution, allTypes, visited, entities, depth: 0);
+        return entities.DistinctBy(type => type.FullName);
+    }
+
+    private static void CollectFlowEntities(
+        TypeModel current,
+        SolutionModel solution,
+        IReadOnlyList<TypeModel> allTypes,
+        ISet<string> visited,
+        ICollection<TypeModel> entities,
+        int depth)
+    {
+        if (depth > 4 || !visited.Add(current.FullName))
+        {
+            return;
+        }
+
+        foreach (var dependency in SemanticGraphDependencies(current))
+        {
+            var next = FindTypeByDependency(solution, allTypes, dependency.TargetType, dependency.Kind);
+            if (next is null)
+            {
+                continue;
+            }
+
+            if (IsDomainType(next))
+            {
+                entities.Add(next);
+            }
+
+            CollectFlowEntities(next, solution, allTypes, visited, entities, depth + 1);
+        }
+    }
+
+    private static IReadOnlyList<LanguageTerm> UbiquitousTerms(SolutionModel solution)
+    {
+        var signals = solution.Projects.SelectMany(project => project.Types)
+            .SelectMany(type => SplitWords(type.Name)
+                .Concat(type.PublicMethods.SelectMany(method => SplitWords(method.Name)))
+                .Concat(type.Summary is null ? [] : SplitWords(type.Summary))
+                .Concat(type.Namespace.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+            .Select(NormalizeBusinessTerm)
+            .Where(IsBusinessToken)
+            .GroupBy(term => term, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new LanguageTerm(group.Key, group.Count(), TermSignals(solution, group.Key)))
+            .OrderByDescending(term => term.Count)
+            .ThenBy(term => term.Term, StringComparer.Ordinal)
+            .ToArray();
+
+        return signals;
+    }
+
+    private static IReadOnlyList<string> TermSignals(SolutionModel solution, string term)
+    {
+        return solution.Projects.SelectMany(project => project.Types)
+            .Where(type => type.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || type.Namespace.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || type.PublicMethods.Any(method => method.Name.Contains(term, StringComparison.OrdinalIgnoreCase)))
+            .Select(type => type.Name)
+            .Distinct(StringComparer.Ordinal)
+            .Take(8)
+            .ToArray();
+    }
+
+    private static IEnumerable<RiskProfile> RiskProfiles(SolutionModel solution)
+    {
+        var allTypes = solution.Projects.SelectMany(project => project.Types).ToArray();
+        foreach (var type in allTypes)
+        {
+            var fanIn = TypesReferencing(solution, type).Count();
+            var fanOut = SemanticGraphDependencies(type).Count();
+            var reasons = new List<string>();
+            var score = 0;
+
+            if (fanIn >= 10) { score += 30; reasons.Add($"high fan-in {fanIn}"); }
+            else if (fanIn >= 4) { score += 15; reasons.Add($"fan-in {fanIn}"); }
+
+            if (fanOut >= 8) { score += 25; reasons.Add($"high fan-out {fanOut}"); }
+            else if (fanOut >= 4) { score += 12; reasons.Add($"fan-out {fanOut}"); }
+
+            if (type.PublicMethods.Count >= 20) { score += 20; reasons.Add($"{type.PublicMethods.Count} public methods"); }
+            if (type.SourceLineCount >= 500) { score += 25; reasons.Add($"{type.SourceLineCount} LOC"); }
+            else if (type.SourceLineCount >= 200) { score += 12; reasons.Add($"{type.SourceLineCount} LOC"); }
+
+            if (type.IsDangerousZone) { score += 20; reasons.Add("dangerous zone"); }
+            if (type.ArchitecturalRole is ArchitecturalRole.DbContext or ArchitecturalRole.Middleware or ArchitecturalRole.Controller or ArchitecturalRole.Endpoint) { score += 15; reasons.Add($"critical role {type.ArchitecturalRole}"); }
+            if (type.Technologies.Any(technology => technology.Contains("Entity Framework", StringComparison.Ordinal) || technology.Contains("MediatR", StringComparison.Ordinal))) { score += 10; reasons.Add("central technology boundary"); }
+            if (LegacySignals(type, solution).Count > 0) { score += 20; reasons.Add("legacy signal"); }
+            if (CrossLayerViolation(type, solution) is { } violation) { score += 20; reasons.Add(violation); }
+
+            yield return new RiskProfile(type, Math.Clamp(score, 0, 100), fanIn, fanOut, reasons.Distinct(StringComparer.Ordinal).ToArray());
+        }
+    }
+
+    private static IReadOnlyList<string> LegacySignals(TypeModel type, SolutionModel solution)
+    {
+        var text = $"{type.FullName} {type.BaseType} {string.Join(' ', type.Interfaces)} {string.Join(' ', type.Technologies)} {string.Join(' ', type.PublicMethods.Select(method => method.Name))}";
+        var project = solution.Projects.FirstOrDefault(project => project.Name == type.ProjectName);
+        var dependencies = string.Join(' ', project?.DeclaredDependencies ?? []);
+        var signals = new List<string>();
+        if (text.Contains("System.Data.Entity", StringComparison.OrdinalIgnoreCase)
+            || dependencies.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(dependency =>
+                dependency.Equals("EntityFramework", StringComparison.OrdinalIgnoreCase)
+                || dependency.StartsWith("EntityFramework.", StringComparison.OrdinalIgnoreCase)))
+        {
+            signals.Add("EF6");
+        }
+        if (dependencies.Contains("Unity", StringComparison.OrdinalIgnoreCase) || text.Contains("UnityContainer", StringComparison.OrdinalIgnoreCase)) signals.Add("Unity IoC");
+        if (text.Contains("System.Reflection", StringComparison.OrdinalIgnoreCase)) signals.Add("reflection-heavy");
+        if (text.Contains("Thread.Sleep", StringComparison.OrdinalIgnoreCase)) signals.Add("Thread.Sleep");
+        if (text.Contains("Obsolete", StringComparison.OrdinalIgnoreCase)) signals.Add("obsolete API");
+        if (dependencies.Contains("System.ServiceModel", StringComparison.OrdinalIgnoreCase) || text.Contains("ServiceContract", StringComparison.OrdinalIgnoreCase)) signals.Add("WCF");
+        if (dependencies.Contains("Microsoft.AspNet.Mvc", StringComparison.OrdinalIgnoreCase)) signals.Add("old ASP.NET MVC");
+        return signals.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static string? CrossLayerViolation(TypeModel type, SolutionModel solution)
+    {
+        var allTypes = solution.Projects.SelectMany(project => project.Types).ToArray();
+        foreach (var dependency in SemanticGraphDependencies(type))
+        {
+            if (dependency.TargetType.Contains(".Interfaces.", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var target = FindTypeByDependency(solution, allTypes, dependency.TargetType, dependency.Kind);
+            if (target is null)
+            {
+                continue;
+            }
+
+            if (type.Layer == ArchitectureLayer.Application && target.Layer == ArchitectureLayer.Infrastructure)
+            {
+                return "Application -> Infrastructure";
+            }
+
+            if (type.Layer == ArchitectureLayer.UI && target.ArchitecturalRole is ArchitecturalRole.Repository or ArchitecturalRole.DbContext)
+            {
+                return "UI -> persistence";
+            }
+
+            if (type.ArchitecturalRole is ArchitecturalRole.Controller or ArchitecturalRole.Endpoint && target.ArchitecturalRole == ArchitecturalRole.DbContext)
+            {
+                return "entry point -> DbContext";
+            }
+        }
+
+        return null;
+    }
+
+    private static string RiskLevel(int score)
+    {
+        return score >= 70 ? "HIGH" : score >= 40 ? "MEDIUM" : "LOW";
+    }
+
+    private static string BusinessResponsibilities(TypeModel type)
+    {
+        var signals = new List<string>();
+        if (!string.IsNullOrWhiteSpace(type.Summary)) signals.Add(type.Summary!);
+        if (type.ArchitecturalRole == ArchitecturalRole.AggregateRoot) signals.Add("aggregate boundary");
+        if (type.ArchitecturalRole == ArchitecturalRole.Entity) signals.Add("business state");
+        if (type.ArchitecturalRole == ArchitecturalRole.ValueObject) signals.Add("domain value");
+        if (type.Patterns.Count > 0) signals.Add(string.Join(", ", type.Patterns));
+        return signals.Count == 0 ? "inferred from domain relationships and naming" : string.Join("; ", signals.Take(3));
+    }
+
+    private static string HumanizeUseCaseName(string name)
+    {
+        return string.Join(' ', SplitWords(name)).Replace(" Async", string.Empty, StringComparison.Ordinal).Trim();
+    }
+
+    private static IEnumerable<string> SplitWords(string value)
+    {
+        return System.Text.RegularExpressions.Regex
+            .Matches(value.Replace("_", " ", StringComparison.Ordinal), @"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
+            .Select(match => match.Value)
+            .Where(word => word.Length > 1);
+    }
+
+    private static string NormalizeBusinessTerm(string term)
+    {
+        var trimmed = term.Trim();
+        if (trimmed.EndsWith("ies", StringComparison.OrdinalIgnoreCase) && trimmed.Length > 4)
+        {
+            return $"{trimmed[..^3]}y";
+        }
+
+        return trimmed.EndsWith('s') && trimmed.Length > 4 ? trimmed[..^1] : trimmed;
+    }
+
+    private static bool IsBusinessToken(string token)
+    {
+        var normalized = NormalizeBusinessTerm(token);
+        if (normalized.Length < 3)
+        {
+            return false;
+        }
+
+        if (normalized.EndsWith("Endpoint", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("Request", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("Response", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        string[] noise =
+        [
+            "Microsoft", "System", "Web", "Core", "Data", "Infrastructure", "Application", "ApplicationCore", "Public", "PublicApi", "Api", "Test", "Tests",
+            "eShopWeb", "BlazorShared", "BlazorAdmin", "AspNetCore",
+            "Service", "Services", "Interface", "Interfaces", "Model", "Models", "View", "Views", "Page", "Pages",
+            "Controller", "Endpoint", "Request", "Response", "Async", "Task", "List", "Result", "Base", "Config",
+            "Configuration", "Extensions", "Helper", "Helpers", "Return", "With", "Get", "Set", "Create", "Update",
+            "Delete", "Unit", "UnitTest", "Ardali", "Ardalis", "Program", "Handler", "Type", "Entity",
+            "Configure", "Repository", "Uri", "FunctionalTest", "Logging", "Email", "ViewModel", "Endpoint"
+        ];
+
+        return !noise.Any(item => string.Equals(normalized, item, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsContextNameAllowed(string contextName)
+    {
+        string[] noise =
+        [
+            "Configure",
+            "Repository",
+            "Uri",
+            "FunctionalTest",
+            "Logging",
+            "Email",
+            "ViewModel",
+            "Entity",
+            "Endpoint",
+            "AuthEndpoint"
+        ];
+
+        return !noise.Any(item => string.Equals(contextName, item, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string ScoreReason(TypeModel type)

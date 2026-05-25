@@ -54,6 +54,7 @@ public sealed record TypeModel(
     IReadOnlyList<TypeDependencyModel> Dependencies,
     RelevanceCategory RelevanceCategory,
     int RelevanceScore,
+    int SourceLineCount,
     bool IsGenerated,
     bool IsMigration,
     bool IsDangerousZone,
