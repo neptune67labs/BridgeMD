@@ -1,31 +1,31 @@
 # AI Context
 
-## Arquitectura inferida
+## Inferred Architecture
 
 - `Clean Architecture`
 - `Layered Architecture`
 
-## Capas detectadas
+## Detected Layers
 
 - `Application`: 4 types; projects `BridgeMD.Markdown`
 - `Domain`: 1 types; projects `BridgeMD.Markdown`
 - `Infrastructure`: 5 types; projects `BridgeMD.Roslyn`
 - `Shared`: 13 types; projects `BridgeMD.Core`
 
-## Convenciones detectadas
+## Detected Conventions
 
 - Async methods use `Async` suffix (2).
 
-## Riesgos o zonas delicadas
+## Risk Areas
 
 - none
 
-## Frameworks y tecnologias detectadas
+## Detected Frameworks And Technologies
 
 - `MSBuildWorkspace`
 - `Roslyn`
 
-## Tipos prioritarios para IA
+## Priority Types For AI
 
 | Type | Role | Score | Layer | Why |
 | --- | --- | ---: | --- | --- |

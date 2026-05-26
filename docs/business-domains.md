@@ -1,12 +1,43 @@
-# Ubiquitous Language
+# Business Domains
+
+| Signal | Value |
+| --- | --- |
+| Primary language | `BridgeMD`, `Markdown`, `Roslyn`, `Dependency`, `Kind`, `Noise`, `Primitive`, `Project`, `Solution`, `Analyze`, `Analyzer`, `Architectural` |
+| Bounded contexts | `BridgeMD` |
+| Core entities | `DomainRelationship` |
+
+## Core Business Entities
+
+| Entity | Role | Context | Used By | Responsibility Signal |
+| --- | --- | --- | --- | --- |
+| `BridgeMD.Markdown.MarkdownDocumentationWriter.DomainRelationship` | Writer | `BridgeMD` | none | Writer |
+
+## Bounded Contexts
+
+| Context | Contains | Services | Entry Points | Dependencies |
+| --- | --- | --- | --- | --- |
+| `BridgeMD` | `DomainRelationship` | none | none | none |
+
+## Use Cases
+
+| Use Case | Entry | Flow | Entities |
+| --- | --- | --- | --- |
+| none | none | none | none |
+
+## Domain Relationships
+
+| Source | Relationship | Target | Evidence |
+| --- | --- | --- | --- |
+| none | none | none | none |
+
+## Ubiquitous Language
 
 | Term | Occurrences | Signals |
 | --- | ---: | --- |
-| `BridgeMD` | 23 | `IoCRegistrationModel`, `MethodModel`, `ParameterModel`, `ProjectModel`, `ProjectReferenceModel`, `SolutionModel`, `TypeDependencyModel`, `TypeModel` |
+| `BridgeMD` | 23 | `IoCRegistrationModel`, `MethodModel`, `ParameterModel`, `ProjectModel`, `ProjectReferenceModel`, `SolutionModel` |
 | `Markdown` | 6 | `RiskProfile`, `MarkdownDocumentationWriter`, `BoundedContextModel`, `DomainRelationship`, `LanguageTerm` |
 | `Roslyn` | 5 | `SolutionAnalyzer`, `SemanticDependencyFilter`, `DependencyDeduplicator`, `FrameworkNoiseFilter`, `PrimitiveTypeFilter` |
 | `Dependency` | 4 | `TypeDependencyModel`, `DependencyKind`, `SemanticDependencyFilter`, `DependencyDeduplicator` |
-| `Filter` | 4 | `SemanticDependencyFilter`, `FrameworkNoiseFilter`, `PrimitiveTypeFilter` |
 | `Kind` | 2 | `CodeTypeKind`, `DependencyKind` |
 | `Noise` | 2 | `FrameworkNoiseFilter` |
 | `Primitive` | 2 | `PrimitiveTypeFilter` |
@@ -19,7 +50,6 @@
 | `Bounded` | 1 | `BoundedContextModel` |
 | `Category` | 1 | `RelevanceCategory` |
 | `Code` | 1 | `CodeTypeKind` |
-| `Context` | 1 | `BoundedContextModel` |
 | `Deduplicate` | 1 | `DependencyDeduplicator` |
 | `Deduplicator` | 1 | `DependencyDeduplicator` |
 | `Documentation` | 1 | `MarkdownDocumentationWriter` |

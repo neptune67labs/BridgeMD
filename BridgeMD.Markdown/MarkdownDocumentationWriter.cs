@@ -12,37 +12,58 @@ public sealed class MarkdownDocumentationWriter
 
         var files = new Dictionary<string, string>
         {
-            ["solution-overview.md"] = RenderSolutionOverview(solution),
+            ["AGENTS.md"] = RenderAgents(solution),
+            ["ai-context.md"] = RenderAiContext(solution),
+            ["architecture.md"] = RenderArchitecture(solution),
+            ["business-domains.md"] = RenderBusinessDomains(solution),
+            ["hotspots.md"] = RenderHotspots(solution),
+            ["dependency-graph.md"] = RenderDependencyGraph(solution),
+            ["ioc-graph.md"] = RenderIocGraph(solution),
+            ["request-flows.md"] = RenderRequestFlows(solution),
+            ["key-types.md"] = RenderKeyTypes(solution),
             ["project-index.md"] = RenderProjectIndex(solution),
-            ["type-index.md"] = RenderTypeIndex(solution),
-            ["AI_CONTEXT.md"] = RenderAiContext(solution),
-            ["ARCHITECTURE.md"] = RenderArchitecture(solution),
-            ["DEPENDENCY_GRAPH.md"] = RenderDependencyGraph(solution),
-            ["CONVENTIONS.md"] = RenderConventions(solution),
-            ["DOMAINS.md"] = RenderDomains(solution),
-            ["DANGEROUS_ZONES.md"] = RenderDangerousZones(solution),
-            ["important-types.md"] = RenderImportantTypes(solution),
-            ["high-relevance-types.md"] = RenderHighRelevanceTypes(solution),
-            ["architectural-hotspots.md"] = RenderArchitecturalHotspots(solution),
-            ["core-domain-types.md"] = RenderCoreDomainTypes(solution),
-            ["IOC_GRAPH.md"] = RenderIocGraph(solution),
-            ["composition-roots.md"] = RenderCompositionRoots(solution),
-            ["REQUEST_FLOWS.md"] = RenderRequestFlows(solution),
-            ["application-flows.md"] = RenderApplicationFlows(solution),
-            ["BUSINESS_DOMAIN.md"] = RenderBusinessDomain(solution),
-            ["BOUNDED_CONTEXTS.md"] = RenderBoundedContexts(solution),
-            ["DOMAIN_RELATIONSHIPS.md"] = RenderDomainRelationships(solution),
-            ["USE_CASES.md"] = RenderUseCases(solution),
-            ["UBIQUITOUS_LANGUAGE.md"] = RenderUbiquitousLanguage(solution),
-            ["ARCHITECTURAL_HOTSPOTS.md"] = RenderArchitecturalHotspotsIntelligence(solution),
-            ["LEGACY_ZONES.md"] = RenderLegacyZones(solution),
-            ["RISK_AREAS.md"] = RenderRiskAreas(solution)
+            ["type-index.md"] = RenderTypeIndex(solution)
         };
 
         foreach (var file in files)
         {
             await File.WriteAllTextAsync(Path.Combine(docsPath, file.Key), file.Value, cancellationToken);
         }
+    }
+
+    private static string RenderAgents(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# AGENTS");
+        builder.AppendLine();
+        builder.AppendLine("Generated markdown is semantic guidance, not source of truth. Always validate assumptions against code.");
+        builder.AppendLine();
+        builder.AppendLine("## Start Here");
+        builder.AppendLine("- `ai-context.md`: fastest overview of architecture, layers, technologies, risks and key types.");
+        builder.AppendLine("- `architecture.md`: layer responsibilities, project dependencies and inferred architectural rules.");
+        builder.AppendLine("- `business-domains.md`: domain vocabulary, bounded contexts, core entities and use cases.");
+        builder.AppendLine("- `hotspots.md`: high-risk, high-centrality, legacy or fragile areas.");
+        builder.AppendLine();
+        builder.AppendLine("## Architecture Investigation");
+        builder.AppendLine("- Read `architecture.md` first.");
+        builder.AppendLine("- Use `dependency-graph.md` for semantic type dependencies.");
+        builder.AppendLine("- Use `ioc-graph.md` to understand runtime registrations and composition roots.");
+        builder.AppendLine();
+        builder.AppendLine("## Domain Investigation");
+        builder.AppendLine("- Read `business-domains.md` for business concepts, contexts and relationships.");
+        builder.AppendLine("- Use `key-types.md` to jump to high-value entities, services, handlers, controllers and repositories.");
+        builder.AppendLine("- Use `request-flows.md` when tracing feature behavior from entry points.");
+        builder.AppendLine();
+        builder.AppendLine("## Risky Areas");
+        builder.AppendLine("- Read `hotspots.md` before changing persistence, authentication, middleware, controllers, legacy infrastructure or central services.");
+        builder.AppendLine("- Validate risky changes with focused tests and direct code inspection.");
+        builder.AppendLine();
+        builder.AppendLine("## Navigation Map");
+        builder.AppendLine("- Tier 1 core memory: `ai-context.md`, `architecture.md`, `business-domains.md`, `hotspots.md`.");
+        builder.AppendLine("- Tier 2 navigation: `dependency-graph.md`, `ioc-graph.md`, `request-flows.md`, `key-types.md`, `project-index.md`, `type-index.md`.");
+        builder.AppendLine("- Prefer Tier 1 for orientation and Tier 2 only when deeper evidence is needed.");
+
+        return builder.ToString();
     }
 
     private static string RenderSolutionOverview(SolutionModel solution)
@@ -200,7 +221,7 @@ public sealed class MarkdownDocumentationWriter
         var builder = new StringBuilder();
         builder.AppendLine("# AI Context");
         builder.AppendLine();
-        builder.AppendLine("## Arquitectura inferida");
+        builder.AppendLine("## Inferred Architecture");
         builder.AppendLine();
         foreach (var architecture in InferArchitectures(solution))
         {
@@ -208,7 +229,7 @@ public sealed class MarkdownDocumentationWriter
         }
 
         builder.AppendLine();
-        builder.AppendLine("## Capas detectadas");
+        builder.AppendLine("## Detected Layers");
         builder.AppendLine();
         foreach (var layer in LayerGroups(solution))
         {
@@ -216,7 +237,7 @@ public sealed class MarkdownDocumentationWriter
         }
 
         builder.AppendLine();
-        builder.AppendLine("## Convenciones detectadas");
+        builder.AppendLine("## Detected Conventions");
         builder.AppendLine();
         foreach (var convention in DetectConventions(solution))
         {
@@ -224,7 +245,7 @@ public sealed class MarkdownDocumentationWriter
         }
 
         builder.AppendLine();
-        builder.AppendLine("## Riesgos o zonas delicadas");
+        builder.AppendLine("## Risk Areas");
         builder.AppendLine();
         var dangerous = DangerousTypes(solution).Take(20).ToArray();
         if (dangerous.Length == 0)
@@ -240,7 +261,7 @@ public sealed class MarkdownDocumentationWriter
         }
 
         builder.AppendLine();
-        builder.AppendLine("## Frameworks y tecnologias detectadas");
+        builder.AppendLine("## Detected Frameworks And Technologies");
         builder.AppendLine();
         var technologies = AllTechnologies(solution);
         if (technologies.Count == 0)
@@ -254,7 +275,7 @@ public sealed class MarkdownDocumentationWriter
         }
 
         builder.AppendLine();
-        builder.AppendLine("## Tipos prioritarios para IA");
+        builder.AppendLine("## Priority Types For AI");
         builder.AppendLine();
         builder.AppendLine("| Type | Role | Score | Layer | Why |");
         builder.AppendLine("| --- | --- | ---: | --- | --- |");
@@ -606,6 +627,186 @@ public sealed class MarkdownDocumentationWriter
         return builder.ToString();
     }
 
+    private static string RenderBusinessDomains(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Business Domains");
+        builder.AppendLine();
+        builder.AppendLine("| Signal | Value |");
+        builder.AppendLine("| --- | --- |");
+        builder.AppendLine($"| Primary language | {InlineList(UbiquitousTerms(solution).Take(12).Select(term => term.Term))} |");
+        builder.AppendLine($"| Bounded contexts | {InlineList(BoundedContexts(solution).Take(12).Select(context => context.Name))} |");
+        builder.AppendLine($"| Core entities | {InlineList(CoreBusinessTypes(solution).Take(12).Select(type => type.Name))} |");
+        builder.AppendLine();
+
+        builder.AppendLine("## Core Business Entities");
+        builder.AppendLine();
+        builder.AppendLine("| Entity | Role | Context | Used By | Responsibility Signal |");
+        builder.AppendLine("| --- | --- | --- | --- | --- |");
+        var coreTypes = CoreBusinessTypes(solution).Take(30).ToArray();
+        if (coreTypes.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none | none |");
+        }
+
+        foreach (var type in coreTypes)
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | `{Escape(InferBoundedContext(type))}` | {InlineList(TypesReferencing(solution, type).Take(6).Select(reference => reference.Name))} | {PlainValue(BusinessResponsibilities(type))} |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Bounded Contexts");
+        builder.AppendLine();
+        builder.AppendLine("| Context | Contains | Services | Entry Points | Dependencies |");
+        builder.AppendLine("| --- | --- | --- | --- | --- |");
+        var contexts = BoundedContexts(solution).Take(20).ToArray();
+        if (contexts.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none | none |");
+        }
+
+        foreach (var context in contexts)
+        {
+            builder.AppendLine($"| `{Escape(context.Name)}` | {InlineList(context.Types.Where(IsDomainType).Take(8).Select(type => type.Name))} | {InlineList(context.Types.Where(type => type.ArchitecturalRole is ArchitecturalRole.ApplicationService or ArchitecturalRole.DomainService).Take(8).Select(type => type.Name))} | {InlineList(context.Types.Where(type => type.ArchitecturalRole is ArchitecturalRole.Controller or ArchitecturalRole.Endpoint or ArchitecturalRole.CQRSHandler).Take(8).Select(type => type.Name))} | {InlineList(ContextDependencies(solution, context.Name).Take(8))} |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Use Cases");
+        builder.AppendLine();
+        builder.AppendLine("| Use Case | Entry | Flow | Entities |");
+        builder.AppendLine("| --- | --- | --- | --- |");
+        var useCases = RequestEntryPoints(solution)
+            .Concat(solution.Projects.SelectMany(project => project.Types)
+                .Where(type => type.Layer != ArchitectureLayer.Tests)
+                .Where(type => type.ArchitecturalRole is ArchitecturalRole.ApplicationService or ArchitecturalRole.CQRSHandler))
+            .DistinctBy(type => type.FullName)
+            .Where(type => !type.Name.StartsWith("I", StringComparison.Ordinal) || type.ArchitecturalRole == ArchitecturalRole.CQRSHandler)
+            .OrderByDescending(type => type.RelevanceScore)
+            .ThenBy(type => type.FullName, StringComparer.Ordinal)
+            .Take(50)
+            .ToArray();
+
+        if (useCases.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none |");
+        }
+
+        foreach (var useCase in useCases)
+        {
+            builder.AppendLine($"| `{Escape(HumanizeUseCaseName(useCase.Name))}` | `{Escape(useCase.FullName)}` | {FormatFlow(useCase, solution)} | {InlineList(FlowEntities(useCase, solution).Take(6).Select(type => type.Name))} |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Domain Relationships");
+        builder.AppendLine();
+        builder.AppendLine("| Source | Relationship | Target | Evidence |");
+        builder.AppendLine("| --- | --- | --- | --- |");
+        var relationships = DomainRelationships(solution).Take(60).ToArray();
+        if (relationships.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none |");
+        }
+
+        foreach (var relationship in relationships)
+        {
+            builder.AppendLine($"| `{Escape(relationship.Source.Name)}` | {relationship.Kind} | `{Escape(relationship.Target.Name)}` | `{relationship.Evidence}` |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Ubiquitous Language");
+        builder.AppendLine();
+        builder.AppendLine("| Term | Occurrences | Signals |");
+        builder.AppendLine("| --- | ---: | --- |");
+        foreach (var term in UbiquitousTerms(solution).Take(40))
+        {
+            builder.AppendLine($"| `{Escape(term.Term)}` | {term.Count} | {InlineList(term.Signals.Take(6))} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderHotspots(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Hotspots");
+        builder.AppendLine();
+        builder.AppendLine("## Highest Risk Areas");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Risk | Score | Fan-in | Fan-out | Size | Reasons |");
+        builder.AppendLine("| --- | --- | ---: | ---: | ---: | ---: | --- |");
+        var profiles = RiskProfiles(solution).Where(profile => profile.Score >= 25).Take(80).ToArray();
+        if (profiles.Length == 0)
+        {
+            builder.AppendLine("| none | none | 0 | 0 | 0 | 0 | none |");
+        }
+
+        foreach (var profile in profiles)
+        {
+            builder.AppendLine($"| `{Escape(profile.Type.FullName)}` | {RiskLevel(profile.Score)} | {profile.Score} | {profile.FanIn} | {profile.FanOut} | {profile.Type.SourceLineCount} | {InlineList(profile.Reasons)} |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Legacy Signals");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Project | Signals |");
+        builder.AppendLine("| --- | --- | --- |");
+        var legacy = solution.Projects.SelectMany(project => project.Types)
+            .Where(type => LegacySignals(type, solution).Count > 0)
+            .OrderByDescending(type => LegacySignals(type, solution).Count)
+            .ThenBy(type => type.FullName, StringComparer.Ordinal)
+            .Take(50)
+            .ToArray();
+
+        if (legacy.Length == 0)
+        {
+            builder.AppendLine("| none | none | none |");
+        }
+
+        foreach (var type in legacy)
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | `{Escape(type.ProjectName)}` | {InlineList(LegacySignals(type, solution))} |");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Dangerous Zones");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Project | Layer | Signals |");
+        builder.AppendLine("| --- | --- | --- | --- |");
+        var dangerousTypes = DangerousTypes(solution).Take(50).ToArray();
+        if (dangerousTypes.Length == 0)
+        {
+            builder.AppendLine("| none | none | none | none |");
+        }
+
+        foreach (var type in dangerousTypes)
+        {
+            var signals = type.Patterns
+                .Concat(type.Technologies)
+                .Concat(type.IsMigration ? ["Migration"] : [])
+                .Concat(type.IsGenerated ? ["Generated"] : []);
+            builder.AppendLine($"| `{Escape(type.FullName)}` | `{Escape(type.ProjectName)}` | {type.Layer} | {InlineList(signals)} |");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string RenderKeyTypes(SolutionModel solution)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("# Key Types");
+        builder.AppendLine();
+        builder.AppendLine("High-signal types for navigation. This file intentionally favors architecture and domain signal over exhaustive listings.");
+        builder.AppendLine();
+        builder.AppendLine("| Type | Role | Layer | Score | Category | Why |");
+        builder.AppendLine("| --- | --- | --- | ---: | --- | --- |");
+        foreach (var type in ImportantTypes(solution).Where(type => type.Layer != ArchitectureLayer.Tests).Take(120))
+        {
+            builder.AppendLine($"| `{Escape(type.FullName)}` | {type.ArchitecturalRole} | {type.Layer} | {type.RelevanceScore} | {type.RelevanceCategory} | {PlainValue(ScoreReason(type))} |");
+        }
+
+        return builder.ToString();
+    }
+
     private static string RenderBusinessDomain(SolutionModel solution)
     {
         var builder = new StringBuilder();
@@ -934,6 +1135,7 @@ public sealed class MarkdownDocumentationWriter
     private static IEnumerable<TypeModel> RequestEntryPoints(SolutionModel solution)
     {
         return ImportantTypes(solution)
+            .Where(type => type.Layer != ArchitectureLayer.Tests)
             .Where(type => type.ArchitecturalRole is ArchitecturalRole.Controller
                 or ArchitecturalRole.Endpoint
                 or ArchitecturalRole.CQRSHandler
@@ -981,6 +1183,10 @@ public sealed class MarkdownDocumentationWriter
     private static bool IsDomainType(TypeModel type)
     {
         return type.Layer != ArchitectureLayer.Tests
+            && !type.IsGenerated
+            && !type.IsMigration
+            && !type.Name.Equals("BaseEntity", StringComparison.OrdinalIgnoreCase)
+            && !(type.Layer is ArchitectureLayer.UI or ArchitectureLayer.API && type.ArchitecturalRole == ArchitecturalRole.ValueObject)
             && (type.Layer == ArchitectureLayer.Domain
                 || type.ArchitecturalRole is ArchitecturalRole.AggregateRoot or ArchitecturalRole.Entity or ArchitecturalRole.ValueObject);
     }
@@ -1150,6 +1356,7 @@ public sealed class MarkdownDocumentationWriter
     private static IReadOnlyList<LanguageTerm> UbiquitousTerms(SolutionModel solution)
     {
         var signals = solution.Projects.SelectMany(project => project.Types)
+            .Where(type => type.Layer != ArchitectureLayer.Tests && !type.IsGenerated && !type.IsMigration)
             .SelectMany(type => SplitWords(type.Name)
                 .Concat(type.PublicMethods.SelectMany(method => SplitWords(method.Name)))
                 .Concat(type.Summary is null ? [] : SplitWords(type.Summary))
@@ -1168,6 +1375,7 @@ public sealed class MarkdownDocumentationWriter
     private static IReadOnlyList<string> TermSignals(SolutionModel solution, string term)
     {
         return solution.Projects.SelectMany(project => project.Types)
+            .Where(type => type.Layer != ArchitectureLayer.Tests && !type.IsGenerated && !type.IsMigration)
             .Where(type => type.Name.Contains(term, StringComparison.OrdinalIgnoreCase)
                 || type.Namespace.Contains(term, StringComparison.OrdinalIgnoreCase)
                 || type.PublicMethods.Any(method => method.Name.Contains(term, StringComparison.OrdinalIgnoreCase)))
@@ -1328,7 +1536,13 @@ public sealed class MarkdownDocumentationWriter
             "Controller", "Endpoint", "Request", "Response", "Async", "Task", "List", "Result", "Base", "Config",
             "Configuration", "Extensions", "Helper", "Helpers", "Return", "With", "Get", "Set", "Create", "Update",
             "Delete", "Unit", "UnitTest", "Ardali", "Ardalis", "Program", "Handler", "Type", "Entity",
-            "Configure", "Repository", "Uri", "FunctionalTest", "Logging", "Email", "ViewModel", "Endpoint"
+            "Configure", "Repository", "Uri", "FunctionalTest", "Logging", "Email", "ViewModel", "Endpoint",
+            "Item", "Items", "Not", "And", "Given", "When", "Then", "Should", "Can", "Has", "Have",
+            "clas", "Matche", "Match", "Handle", "Index", "Key", "Route", "Extension", "Generate",
+            "Post", "Put", "Patch", "Valid", "Invalid", "Builder", "Context", "Specification",
+            "Add", "Remove", "Empty", "Total", "Paged", "Detail", "Exception", "Http", "Invoke",
+            "Migration", "Nav", "Component", "Constant", "Count", "Edit", "Filter", "Json",
+            "Lookup", "PublicApiIntegrationTest"
         ];
 
         return !noise.Any(item => string.Equals(normalized, item, StringComparison.OrdinalIgnoreCase));
@@ -1347,7 +1561,11 @@ public sealed class MarkdownDocumentationWriter
             "ViewModel",
             "Entity",
             "Endpoint",
-            "AuthEndpoint"
+            "AuthEndpoint",
+            "Authenticate",
+            "Claim",
+            "Token",
+            "Manage"
         ];
 
         return !noise.Any(item => string.Equals(contextName, item, StringComparison.OrdinalIgnoreCase));
