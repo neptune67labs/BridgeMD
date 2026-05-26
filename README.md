@@ -15,13 +15,11 @@ The command writes these files to `/docs` at the root of the analyzed solution:
 - `solution-overview.md`
 - `project-index.md`
 - `type-index.md`
-- `AI_CONTEXT.md`
-- `ARCHITECTURE.md`
-- `DEPENDENCY_GRAPH.md`
-- `CONVENTIONS.md`
-- `DOMAINS.md`
-- `DANGEROUS_ZONES.md`
+- `ai_context.md`
+- `architecture.md`
+- `dependency-graph.md`
+- `business-domains.md`
 
 ## Local Testing With External Repositories
 
-Clone large test solutions under `/Users/francisco/Projects/BridgeMD/external-solutions` or `/Users/francisco/Projects/BridgeMD/sandbox-solutions`. Those folders are ignored by git, so they are safe for experiments without polluting this repository.
+Clone large test solutions under `/BridgeMD/external-solutions` or `/BridgeMD/sandbox-solutions`. Those folders are ignored by git, so they are safe for experiments without polluting this repository.
