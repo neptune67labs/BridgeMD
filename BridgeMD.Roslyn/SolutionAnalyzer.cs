@@ -25,7 +25,11 @@ public sealed class SolutionAnalyzer
 
         EnsureMSBuildRegistered();
 
-        using var workspace = MSBuildWorkspace.Create();
+        using var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>
+        {
+            ["RestoreIgnoreFailedSources"] = "true"
+        });
+        workspace.SkipUnrecognizedProjects = true;
         workspace.WorkspaceFailed += (_, args) =>
         {
             if (args.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure)
@@ -35,7 +39,19 @@ public sealed class SolutionAnalyzer
         };
 
         Console.WriteLine($"Loading solution: {fullSolutionPath}");
-        var solution = await workspace.OpenSolutionAsync(fullSolutionPath, cancellationToken: cancellationToken);
+        Microsoft.CodeAnalysis.Solution solution;
+        try
+        {
+            solution = await workspace.OpenSolutionAsync(fullSolutionPath, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex) when (LooksLikeNuGetSourceFailure(ex))
+        {
+            throw new InvalidOperationException(
+                "The solution could not be loaded because NuGet package/source resolution failed. " +
+                "BridgeMD ignores failed package sources when MSBuild allows it, but private packages must still be available in the local NuGet cache or through an accessible feed. " +
+                "Restore the target solution first with the correct NuGet.config or credentials, then run BridgeMD again.",
+                ex);
+        }
 
         var projects = new List<ProjectModel>();
         foreach (var project in solution.Projects.OrderBy(project => project.Name, StringComparer.Ordinal))
@@ -51,6 +67,17 @@ public sealed class SolutionAnalyzer
             fullSolutionPath,
             Path.GetDirectoryName(fullSolutionPath) ?? Directory.GetCurrentDirectory(),
             projects);
+    }
+
+    private static bool LooksLikeNuGetSourceFailure(Exception exception)
+    {
+        var text = exception.ToString();
+        return text.Contains("NuGet", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("package source", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("NU1301", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("NU1101", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Unable to load the service index", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("feed", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<ProjectModel> AnalyzeProjectAsync(

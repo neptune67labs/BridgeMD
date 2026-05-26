@@ -5,7 +5,7 @@
 | Type | Risk | Score | Fan-in | Fan-out | Size | Reasons |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | `BridgeMD.Markdown.MarkdownDocumentationWriter` | LOW | 25 | 0 | 0 | 1840 | `1840 LOC` |
-| `BridgeMD.Roslyn.SolutionAnalyzer` | LOW | 25 | 0 | 2 | 757 | `757 LOC` |
+| `BridgeMD.Roslyn.SolutionAnalyzer` | LOW | 25 | 0 | 2 | 784 | `784 LOC` |
 
 ## Legacy Signals
 
