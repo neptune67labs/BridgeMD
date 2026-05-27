@@ -4,7 +4,8 @@ public sealed record SolutionModel(
     string Name,
     string FilePath,
     string RootPath,
-    IReadOnlyList<ProjectModel> Projects)
+    IReadOnlyList<ProjectModel> Projects,
+    AnalysisSummary? AnalysisSummary = null)
 {
     public int TypeCount => Projects.Sum(project => project.Types.Count);
 
@@ -15,6 +16,48 @@ public sealed record SolutionModel(
         .Distinct(StringComparer.Ordinal)
         .Order(StringComparer.Ordinal)
         .ToArray();
+}
+
+public sealed record AnalysisOptions(
+    bool ForceSyntaxOnly = false,
+    bool ContinueOnError = true,
+    bool Diagnostics = false,
+    bool SemanticStrict = false,
+    TimeSpan? ProjectTimeout = null,
+    string? MSBuildPath = null,
+    string? VisualStudioVersion = null,
+    string? SdkPath = null,
+    IReadOnlyList<string>? ExcludedProjects = null,
+    IReadOnlyList<string>? ExcludedFolders = null,
+    string? SolutionFilter = null);
+
+public sealed record AnalysisSummary(
+    int ProjectsDiscovered,
+    int ProjectsAnalyzedSemantically,
+    int ProjectsAnalyzedSyntactically,
+    int ProjectsFailed,
+    TimeSpan Elapsed,
+    IReadOnlyList<AnalysisDiagnostic> Diagnostics)
+{
+    public double SemanticCoverage => ProjectsDiscovered == 0 ? 0 : (double)ProjectsAnalyzedSemantically / ProjectsDiscovered;
+
+    public double SyntaxFallbackCoverage => ProjectsDiscovered == 0
+        ? 0
+        : (double)(ProjectsAnalyzedSemantically + ProjectsAnalyzedSyntactically) / ProjectsDiscovered;
+}
+
+public sealed record AnalysisDiagnostic(
+    AnalysisDiagnosticSeverity Severity,
+    string Code,
+    string Message,
+    string? ProjectName = null,
+    string? ProjectPath = null);
+
+public enum AnalysisDiagnosticSeverity
+{
+    Info,
+    Warning,
+    Error
 }
 
 public sealed record ProjectModel(

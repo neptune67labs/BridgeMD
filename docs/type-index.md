@@ -18,7 +18,32 @@
 | Summary | none |
 
 Public methods:
-- `Task<SolutionModel> AnalyzeAsync(string solutionPath, CancellationToken cancellationToken)`
+- `Task<SolutionModel> AnalyzeAsync(string solutionPath, AnalysisOptions? options, CancellationToken cancellationToken)`
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Syntax.SyntaxSolutionAnalyzer
+
+| Field | Value |
+| --- | --- |
+| Kind | Class |
+| Role | Analyzer |
+| Layer | Unknown |
+| Relevance | Medium / 44 |
+| Reason | role Analyzer; patterns Analyzer |
+| Namespace | `BridgeMD.Syntax` |
+| Project | `BridgeMD.Syntax` |
+| Base type | none |
+| Interfaces | none |
+| Patterns | `Analyzer` |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- `ProjectModel? AnalyzeProject(string projectPath, AnalysisOptions? options, CancellationToken cancellationToken)`
+- `Task<SolutionModel> AnalyzeSolutionAsync(string solutionPath, AnalysisOptions? options, IReadOnlyList<AnalysisDiagnostic>? diagnostics, TimeSpan? elapsed, CancellationToken cancellationToken)`
+- `IReadOnlyList<string> DiscoverProjectPaths(string solutionPath, AnalysisOptions? options)`
 
 Semantic dependencies:
 - none
@@ -230,6 +255,75 @@ Public methods:
 Semantic dependencies:
 - none
 
+## BridgeMD.Core.AnalysisDiagnostic
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Unknown |
+| Layer | Shared |
+| Relevance | Low / 18 |
+| Reason | low architectural signal |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Core.AnalysisDiagnostic>` |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.AnalysisOptions
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Unknown |
+| Layer | Shared |
+| Relevance | Low / 18 |
+| Reason | low architectural signal |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Core.AnalysisOptions>` |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.AnalysisSummary
+
+| Field | Value |
+| --- | --- |
+| Kind | Record |
+| Role | Unknown |
+| Layer | Shared |
+| Relevance | Low / 18 |
+| Reason | low architectural signal |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | `System.IEquatable<BridgeMD.Core.AnalysisSummary>` |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
 ## BridgeMD.Core.IoCRegistrationModel
 
 | Field | Value |
@@ -404,6 +498,29 @@ Semantic dependencies:
 | Project | `BridgeMD.Core` |
 | Base type | none |
 | Interfaces | `System.IEquatable<BridgeMD.Core.TypeModel>` |
+| Patterns | none |
+| Technologies | none |
+| Summary | none |
+
+Public methods:
+- none
+
+Semantic dependencies:
+- none
+
+## BridgeMD.Core.AnalysisDiagnosticSeverity
+
+| Field | Value |
+| --- | --- |
+| Kind | Enum |
+| Role | Unknown |
+| Layer | Shared |
+| Relevance | Low / 3 |
+| Reason | low architectural signal |
+| Namespace | `BridgeMD.Core` |
+| Project | `BridgeMD.Core` |
+| Base type | none |
+| Interfaces | none |
 | Patterns | none |
 | Technologies | none |
 | Summary | none |

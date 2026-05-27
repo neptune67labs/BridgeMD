@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using BridgeMD.Core;
+using BridgeMD.Syntax;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,15 +16,48 @@ public sealed class SolutionAnalyzer
     private static readonly SymbolDisplayFormat ShortNameFormat = SymbolDisplayFormat.MinimallyQualifiedFormat;
     private static readonly SemanticDependencyFilter DependencyFilter = new();
 
-    public async Task<SolutionModel> AnalyzeAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<SolutionModel> AnalyzeAsync(
+        string solutionPath,
+        AnalysisOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
+        var startedAt = DateTimeOffset.UtcNow;
+        options ??= new AnalysisOptions();
+        var diagnostics = new List<AnalysisDiagnostic>();
+        var syntaxAnalyzer = new SyntaxSolutionAnalyzer();
         var fullSolutionPath = Path.GetFullPath(solutionPath);
         if (!File.Exists(fullSolutionPath))
         {
             throw new FileNotFoundException("Solution file not found.", fullSolutionPath);
         }
 
-        EnsureMSBuildRegistered();
+        var discoveredProjectPaths = syntaxAnalyzer.DiscoverProjectPaths(fullSolutionPath, options);
+        if (options.Diagnostics)
+        {
+            Console.WriteLine("[BridgeMD] Detecting MSBuild environment...");
+        }
+
+        if (options.ForceSyntaxOnly)
+        {
+            Console.WriteLine("[BridgeMD] Syntax-only mode enabled.");
+            return await syntaxAnalyzer.AnalyzeSolutionAsync(fullSolutionPath, options, diagnostics, DateTimeOffset.UtcNow - startedAt, cancellationToken);
+        }
+
+        try
+        {
+            EnsureMSBuildRegistered(options, diagnostics);
+        }
+        catch (Exception ex)
+        {
+            diagnostics.Add(new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Error, "MSBUILD_DISCOVERY_FAILED", ex.Message));
+            if (options.SemanticStrict)
+            {
+                throw;
+            }
+
+            Console.WriteLine("[WARN] MSBuild discovery failed; switching to syntax-only analysis.");
+            return await syntaxAnalyzer.AnalyzeSolutionAsync(fullSolutionPath, options, diagnostics, DateTimeOffset.UtcNow - startedAt, cancellationToken);
+        }
 
         using var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>
         {
@@ -34,6 +68,7 @@ public sealed class SolutionAnalyzer
         {
             if (args.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure)
             {
+                diagnostics.Add(ClassifyWorkspaceDiagnostic(args.Diagnostic.Message));
                 Console.WriteLine($"[Roslyn] {args.Diagnostic.Message}");
             }
         };
@@ -46,27 +81,105 @@ public sealed class SolutionAnalyzer
         }
         catch (Exception ex) when (LooksLikeNuGetSourceFailure(ex))
         {
-            throw new InvalidOperationException(
-                "The solution could not be loaded because NuGet package/source resolution failed. " +
-                "BridgeMD ignores failed package sources when MSBuild allows it, but private packages must still be available in the local NuGet cache or through an accessible feed. " +
-                "Restore the target solution first with the correct NuGet.config or credentials, then run BridgeMD again.",
-                ex);
+            diagnostics.Add(new AnalysisDiagnostic(
+                AnalysisDiagnosticSeverity.Warning,
+                "NUGET_SOURCE_FAILED",
+                "NuGet package/source resolution failed. Switching to syntax-only analysis unless semantic strict mode is enabled."));
+
+            if (options.SemanticStrict)
+            {
+                throw new InvalidOperationException(
+                    "The solution could not be loaded because NuGet package/source resolution failed. " +
+                    "BridgeMD ignores failed package sources when MSBuild allows it, but private packages must still be available in the local NuGet cache or through an accessible feed. " +
+                    "Restore the target solution first with the correct NuGet.config or credentials, then run BridgeMD again.",
+                    ex);
+            }
+
+            Console.WriteLine("[WARN] NuGet/source resolution failed; switching to syntax-only analysis.");
+            return await syntaxAnalyzer.AnalyzeSolutionAsync(fullSolutionPath, options, diagnostics, DateTimeOffset.UtcNow - startedAt, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            diagnostics.Add(new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Warning, "WORKSPACE_LOAD_FAILED", ex.Message));
+            if (options.SemanticStrict)
+            {
+                throw;
+            }
+
+            Console.WriteLine("[WARN] MSBuildWorkspace failed; switching to syntax-only analysis.");
+            return await syntaxAnalyzer.AnalyzeSolutionAsync(fullSolutionPath, options, diagnostics, DateTimeOffset.UtcNow - startedAt, cancellationToken);
         }
 
         var projects = new List<ProjectModel>();
-        foreach (var project in solution.Projects.OrderBy(project => project.Name, StringComparer.Ordinal))
+        var semanticCount = 0;
+        var syntaxCount = 0;
+        var failedCount = 0;
+        foreach (var project in solution.Projects
+            .Where(project => ShouldIncludeProject(project.Name, project.FilePath, options))
+            .OrderBy(project => project.Name, StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            Console.WriteLine($"Analyzing project: {project.Name}");
-            projects.Add(await AnalyzeProjectAsync(solution, project, cancellationToken));
+            Console.WriteLine($"Analyzing project: {project.Name} (semantic)");
+            try
+            {
+                projects.Add(await AnalyzeProjectWithTimeoutAsync(solution, project, options, cancellationToken));
+                semanticCount++;
+            }
+            catch (Exception ex) when (options.ContinueOnError && !options.SemanticStrict)
+            {
+                diagnostics.Add(new AnalysisDiagnostic(
+                    AnalysisDiagnosticSeverity.Warning,
+                    ex is TimeoutException ? "PROJECT_TIMEOUT" : "PROJECT_SEMANTIC_FAILED",
+                    ex.Message,
+                    project.Name,
+                    project.FilePath));
+                Console.WriteLine($"[WARN] {project.Name} semantic analysis failed; switching to syntax mode.");
+
+                if (project.FilePath is not null && syntaxAnalyzer.AnalyzeProject(project.FilePath, options, cancellationToken) is { } syntaxProject)
+                {
+                    projects.Add(syntaxProject);
+                    syntaxCount++;
+                }
+                else
+                {
+                    failedCount++;
+                }
+            }
         }
+
+        var elapsed = DateTimeOffset.UtcNow - startedAt;
+        var discovered = discoveredProjectPaths.Count == 0 ? projects.Count : discoveredProjectPaths.Count;
+        var summary = new AnalysisSummary(discovered, semanticCount, syntaxCount, failedCount, elapsed, diagnostics);
 
         return new SolutionModel(
             Path.GetFileNameWithoutExtension(fullSolutionPath),
             fullSolutionPath,
             Path.GetDirectoryName(fullSolutionPath) ?? Directory.GetCurrentDirectory(),
-            projects);
+            projects,
+            summary);
+    }
+
+    private static async Task<ProjectModel> AnalyzeProjectWithTimeoutAsync(
+        Solution solution,
+        Project project,
+        AnalysisOptions options,
+        CancellationToken cancellationToken)
+    {
+        var analysisTask = AnalyzeProjectAsync(solution, project, cancellationToken);
+        if (options.ProjectTimeout is not { } timeout || timeout <= TimeSpan.Zero)
+        {
+            return await analysisTask;
+        }
+
+        var timeoutTask = Task.Delay(timeout, cancellationToken);
+        var completed = await Task.WhenAny(analysisTask, timeoutTask);
+        if (completed == timeoutTask)
+        {
+            throw new TimeoutException($"Project analysis exceeded timeout of {timeout.TotalSeconds:0} seconds.");
+        }
+
+        return await analysisTask;
     }
 
     private static bool LooksLikeNuGetSourceFailure(Exception exception)
@@ -78,6 +191,49 @@ public sealed class SolutionAnalyzer
             || text.Contains("NU1101", StringComparison.OrdinalIgnoreCase)
             || text.Contains("Unable to load the service index", StringComparison.OrdinalIgnoreCase)
             || text.Contains("feed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static AnalysisDiagnostic ClassifyWorkspaceDiagnostic(string message)
+    {
+        var code = "WORKSPACE_DIAGNOSTIC";
+        if (message.Contains(".dcproj", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("not associated with a language", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("no está asociada a un lenguaje", StringComparison.OrdinalIgnoreCase))
+        {
+            code = "PROJECT_UNSUPPORTED";
+        }
+        else if (message.Contains("SDK", StringComparison.OrdinalIgnoreCase)) code = "SDK_UNRESOLVED";
+        else if (message.Contains("target", StringComparison.OrdinalIgnoreCase) || message.Contains(".targets", StringComparison.OrdinalIgnoreCase)) code = "TARGET_IMPORT_FAILED";
+        else if (message.Contains("NuGet", StringComparison.OrdinalIgnoreCase) || message.Contains("feed", StringComparison.OrdinalIgnoreCase)) code = "NUGET_SOURCE_FAILED";
+        else if (message.Contains("COM reference", StringComparison.OrdinalIgnoreCase)) code = "COM_REFERENCE_FAILED";
+        else if (message.Contains("workload", StringComparison.OrdinalIgnoreCase)) code = "WORKLOAD_MISSING";
+        return new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Warning, code, message);
+    }
+
+    private static bool ShouldIncludeProject(string projectName, string? projectPath, AnalysisOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.SolutionFilter) && !GlobMatches(projectName, options.SolutionFilter!))
+        {
+            return false;
+        }
+
+        if ((options.ExcludedProjects ?? []).Any(pattern => GlobMatches(projectName, pattern) || (projectPath is not null && GlobMatches(projectPath, pattern))))
+        {
+            return false;
+        }
+
+        if (projectPath is not null && (options.ExcludedFolders ?? []).Any(pattern => GlobMatches(projectPath, pattern)))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool GlobMatches(string value, string pattern)
+    {
+        var regex = "^" + Regex.Escape(pattern).Replace("\\*", ".*", StringComparison.Ordinal).Replace("\\?", ".", StringComparison.Ordinal) + "$";
+        return Regex.IsMatch(value, regex, RegexOptions.IgnoreCase);
     }
 
     private static async Task<ProjectModel> AnalyzeProjectAsync(
@@ -783,13 +939,50 @@ public sealed class SolutionAnalyzer
         return Regex.Replace(value, @"\s+", " ").Trim();
     }
 
-    private static void EnsureMSBuildRegistered()
+    private static void EnsureMSBuildRegistered(AnalysisOptions options, ICollection<AnalysisDiagnostic> diagnostics)
     {
+        if (!string.IsNullOrWhiteSpace(options.SdkPath))
+        {
+            Environment.SetEnvironmentVariable("DOTNET_ROOT", options.SdkPath);
+            diagnostics.Add(new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Info, "SDK_PATH_OVERRIDE", $"DOTNET_ROOT set to {options.SdkPath}."));
+        }
+
         if (MSBuildLocator.IsRegistered)
         {
+            diagnostics.Add(new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Info, "MSBUILD_ALREADY_REGISTERED", "MSBuild was already registered."));
             return;
         }
 
-        MSBuildLocator.RegisterDefaults();
+        if (!string.IsNullOrWhiteSpace(options.MSBuildPath))
+        {
+            var msbuildPath = File.Exists(options.MSBuildPath)
+                ? Path.GetDirectoryName(options.MSBuildPath) ?? options.MSBuildPath
+                : options.MSBuildPath;
+            MSBuildLocator.RegisterMSBuildPath(msbuildPath);
+            diagnostics.Add(new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Info, "MSBUILD_PATH_OVERRIDE", $"MSBuild registered from {msbuildPath}."));
+            Console.WriteLine($"[OK] MSBuild loaded from {msbuildPath}");
+            return;
+        }
+
+        var instances = MSBuildLocator.QueryVisualStudioInstances().OrderByDescending(instance => instance.Version).ToArray();
+        if (instances.Length == 0)
+        {
+            MSBuildLocator.RegisterDefaults();
+            diagnostics.Add(new AnalysisDiagnostic(AnalysisDiagnosticSeverity.Info, "MSBUILD_DEFAULTS", "MSBuild registered from defaults."));
+            Console.WriteLine("[OK] MSBuild defaults loaded");
+            return;
+        }
+
+        var selected = !string.IsNullOrWhiteSpace(options.VisualStudioVersion)
+            ? instances.FirstOrDefault(instance => instance.Version.ToString().StartsWith(options.VisualStudioVersion, StringComparison.OrdinalIgnoreCase))
+            : instances.FirstOrDefault();
+
+        selected ??= instances.First();
+        MSBuildLocator.RegisterInstance(selected);
+        diagnostics.Add(new AnalysisDiagnostic(
+            AnalysisDiagnosticSeverity.Info,
+            "MSBUILD_INSTANCE",
+            $"MSBuild {selected.Version} loaded from {selected.MSBuildPath}."));
+        Console.WriteLine($"[OK] MSBuild {selected.Version} loaded from {selected.MSBuildPath}");
     }
 }

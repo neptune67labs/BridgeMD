@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BridgeMD.Core\BridgeMD.Core.csproj" />
+    <ProjectReference Include="..\BridgeMD.Syntax\BridgeMD.Syntax.csproj" />
   </ItemGroup>
 
   <ItemGroup>
