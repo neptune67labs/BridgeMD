@@ -28,11 +28,9 @@ try
     var analyzer = new SolutionAnalyzer();
     var writer = new MarkdownDocumentationWriter();
 
-    Console.WriteLine("[BridgeMD] Starting analysis");
-    var solution = await analyzer.AnalyzeAsync(args[1], options);
+    var solution = await RunWithSpinnerAsync("Analyzing solution", () => analyzer.AnalyzeAsync(args[1], options));
 
-    Console.WriteLine("[BridgeMD] Writing markdown");
-    await writer.WriteAsync(solution);
+    await RunWithSpinnerActionAsync("Writing markdown", () => writer.WriteAsync(solution));
 
     Console.WriteLine($"Done. Markdown generated at: {Path.Combine(solution.RootPath, "docs")}");
     PrintSummary(solution.AnalysisSummary);
@@ -42,6 +40,74 @@ catch (Exception ex)
 {
     Console.Error.WriteLine($"BridgeMD failed: {ex.Message}");
     return 1;
+}
+
+static async Task<T> RunWithSpinnerAsync<T>(string message, Func<Task<T>> operation)
+{
+    if (Console.IsErrorRedirected)
+    {
+        Console.WriteLine($"[BridgeMD] {message}");
+        return await operation();
+    }
+
+    using var cancellation = new CancellationTokenSource();
+    var startedAt = DateTimeOffset.UtcNow;
+    var spinner = SpinAsync(message, startedAt, cancellation.Token);
+
+    try
+    {
+        var result = await operation();
+        cancellation.Cancel();
+        await IgnoreCancellationAsync(spinner);
+        Console.WriteLine($"[OK] {message} ({DateTimeOffset.UtcNow - startedAt:hh\\:mm\\:ss})");
+        return result;
+    }
+    catch
+    {
+        cancellation.Cancel();
+        await IgnoreCancellationAsync(spinner);
+        Console.Error.WriteLine($"[FAIL] {message} ({DateTimeOffset.UtcNow - startedAt:hh\\:mm\\:ss})");
+        throw;
+    }
+}
+
+static async Task RunWithSpinnerActionAsync(string message, Func<Task> operation)
+{
+    await RunWithSpinnerAsync(message, async () =>
+    {
+        await operation();
+        return true;
+    });
+}
+
+static async Task SpinAsync(string message, DateTimeOffset startedAt, CancellationToken cancellationToken)
+{
+    char[] frames = ['|', '/', '-', '\\'];
+    var index = 0;
+    while (!cancellationToken.IsCancellationRequested)
+    {
+        var elapsed = DateTimeOffset.UtcNow - startedAt;
+        Console.Error.WriteLine($"[{frames[index++ % frames.Length]}] {message} elapsed {elapsed:hh\\:mm\\:ss}");
+        try
+        {
+            await Task.Delay(1000, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            break;
+        }
+    }
+}
+
+static async Task IgnoreCancellationAsync(Task task)
+{
+    try
+    {
+        await task;
+    }
+    catch (OperationCanceledException)
+    {
+    }
 }
 
 static AnalysisOptions ParseOptions(IReadOnlyList<string> args)
